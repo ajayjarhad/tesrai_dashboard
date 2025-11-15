@@ -153,3 +153,6 @@ logs
 # Temporary files
 *.tmp
 *.temp
+
+# OpenSpec
+openspec
