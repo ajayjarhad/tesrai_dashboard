@@ -1,0 +1,27 @@
+{
+  "name": "@tensrai/shared",
+  "version": "1.0.0",
+  "description": "Shared types and utilities for Tensrai Dashboard",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": ["robotics", "shared", "types", "dashboard"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "files": ["dist"]
+}

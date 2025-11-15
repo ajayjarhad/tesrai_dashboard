@@ -1,0 +1,27 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run full build and tests before pushing
+echo "🏗️  Running pre-push checks..."
+
+# Clean build to ensure everything compiles
+echo "🧹 Cleaning previous builds..."
+bun run clean:build
+
+# Build all packages in correct order
+echo "📦 Building packages..."
+bun run build
+if [ $? -ne 0 ]; then
+  echo "❌ Build failed"
+  exit 1
+fi
+
+# Final health check
+echo "🏥 Running health check..."
+bun run health-check
+if [ $? -ne 0 ]; then
+  echo "❌ Health check failed"
+  exit 1
+fi
+
+echo "✅ All pre-push checks passed!"

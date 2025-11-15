@@ -1,0 +1,36 @@
+[install]
+# Use hoisted dependencies for better monorepo performance
+linker = "hoisted"
+
+# Auto-install peer dependencies to avoid common monorepo issues
+auto = "force"
+
+# Prefer deno/npm registries as fallback
+registry = "https://registry.npmjs.org"
+
+[install.cache]
+# Enable persistent caching for faster installs
+enabled = true
+# Cache directory location (relative to project root)
+dir = ".bun-cache"
+
+[install.scopes]
+# Ensure specific scopes use npm registry
+"@types" = "https://registry.npmjs.org"
+"@biomejs" = "https://registry.npmjs.org"
+
+[install.lockfile]
+# Always generate bun.lock for consistency
+print = "yarn"
+
+
+
+[build]
+# Target modern Node.js and browsers for better performance
+target = "node"
+# Define environment variables for builds
+define = { "process.env.NODE_ENV" = "\"production\"" }
+
+[debug]
+# Enable source maps for better debugging
+sourceMaps = true
