@@ -13,6 +13,7 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {
+      '@tensrai/shared': path.resolve(__dirname, '../shared/src'),
       '@shared': path.resolve(__dirname, '../shared/src'),
       '@': path.resolve(__dirname, './src'),
       '@/app': path.resolve(__dirname, './src/app'),
