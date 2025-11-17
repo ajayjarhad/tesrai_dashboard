@@ -1,8 +1,8 @@
-import { wrappedApiClient } from '@/lib/api';
-import { useAuth } from '@/stores/auth';
 import type { CreateUserInput, User } from '@tensrai/shared';
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import { wrappedApiClient } from '@/lib/api';
+import { useAuth } from '@/stores/auth';
 
 interface CreateUserResponse {
   user: User;

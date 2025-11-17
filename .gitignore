@@ -161,3 +161,7 @@ logs
 # OpenSpec
 openspec
 /generated/prisma
+
+# TypeScript declaration files
+dist/
+dist-types/

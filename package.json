@@ -3,7 +3,11 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "workspaces": ["frontend", "backend", "shared"],
+  "workspaces": [
+    "frontend",
+    "backend",
+    "shared"
+  ],
   "scripts": {
     "dev": "bun run dev:frontend & bun run dev:backend & wait",
     "dev:frontend": "bun run --cwd frontend dev",
@@ -26,7 +30,7 @@
     "health-check": "bun run type-check && bun run lint"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
+    "@biomejs/biome": "^2.3.6",
     "husky": "^9.1.6",
     "typescript": "^5.9.3"
   },

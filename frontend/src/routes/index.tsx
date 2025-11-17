@@ -1,16 +1,16 @@
-import { UserManagement } from '@/features/admin/components';
-import { LoginForm, ResetPasswordForm } from '@/features/auth/components';
-import { useAuth, useAuthStore } from '@/stores/auth';
 import {
-  Navigate,
-  Outlet,
   createRootRoute,
   createRoute,
   createRouter,
+  Navigate,
+  Outlet,
   redirect,
 } from '@tanstack/react-router';
 import { PERMISSIONS } from '@tensrai/shared';
 import React from 'react';
+import { UserManagement } from '@/features/admin/components';
+import { LoginForm, ResetPasswordForm } from '@/features/auth/components';
+import { useAuth, useAuthStore } from '@/stores/auth';
 
 const rootRoute = createRootRoute({
   component: () => {

@@ -1,10 +1,10 @@
-import { authClient, wrappedApiClient } from '@/lib/api';
 import { useRouter } from '@tanstack/react-router';
 import type { AuthState, LoginCredentials, ResetPasswordInput, User } from '@tensrai/shared';
 import { type Permission, ROLE_PERMISSIONS } from '@tensrai/shared';
 import React from 'react';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { authClient, wrappedApiClient } from '@/lib/api';
 
 const getErrorMessage = async (response: Response): Promise<string> => {
   try {

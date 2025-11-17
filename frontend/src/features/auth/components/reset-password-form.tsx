@@ -1,8 +1,8 @@
-import { useAuth } from '@/stores/auth';
 import { useNavigate } from '@tanstack/react-router';
 import type { ResetPasswordInput } from '@tensrai/shared';
 import type React from 'react';
 import { useState } from 'react';
+import { useAuth } from '@/stores/auth';
 
 export function ResetPasswordForm() {
   const navigate = useNavigate();
