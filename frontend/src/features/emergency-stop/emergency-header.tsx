@@ -1,7 +1,7 @@
-import { Button } from '@/components/ui/button';
-import { cn, generateId } from '@/lib/utils/utils';
 import { AlertTriangle } from 'lucide-react';
 import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn, generateId } from '@/lib/utils/utils';
 import type { EmergencyHeaderProps } from './types';
 
 const EmergencyHeader = React.forwardRef<HTMLElement, EmergencyHeaderProps>(

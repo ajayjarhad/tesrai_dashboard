@@ -1,6 +1,6 @@
 import {
-  type AttributeValue,
   type Attributes,
+  type AttributeValue,
   SpanKind,
   SpanStatusCode,
   trace,

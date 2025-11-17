@@ -16,7 +16,12 @@
     "type-check": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["robotics", "dashboard", "ros", "api"],
+  "keywords": [
+    "robotics",
+    "dashboard",
+    "ros",
+    "api"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {

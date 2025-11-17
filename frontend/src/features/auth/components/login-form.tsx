@@ -1,7 +1,7 @@
-import { useAuth } from '@/stores/auth';
 import { Link } from '@tanstack/react-router';
 import type React from 'react';
 import { useState } from 'react';
+import { useAuth } from '@/stores/auth';
 
 export function LoginForm() {
   const { login, isLoading, error } = useAuth();

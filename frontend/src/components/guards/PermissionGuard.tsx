@@ -1,6 +1,6 @@
-import { useAuth } from '@/stores/auth';
 import { PERMISSIONS, type Permission } from '@tensrai/shared';
 import type React from 'react';
+import { useAuth } from '@/stores/auth';
 
 interface PermissionGuardProps {
   permission: Permission;

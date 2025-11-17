@@ -17,11 +17,18 @@
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit"
   },
-  "keywords": ["robotics", "shared", "types", "dashboard"],
+  "keywords": [
+    "robotics",
+    "shared",
+    "types",
+    "dashboard"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "typescript": "^5.9.3"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }
