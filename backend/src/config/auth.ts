@@ -29,11 +29,11 @@ export const auth = (prisma: PrismaClient) => {
       }),
 
       session: {
-        expiresIn: 60 * 15,
-        updateAge: 60 * 5,
+        expiresIn: 60 * 60 * 24 * 5, // 5 days
+        updateAge: 60 * 60 * 12, // Update every 12 hours
         cookieCache: {
           enabled: true,
-          maxAge: 5 * 60,
+          maxAge: 60 * 60 * 24 * 5, // 5 days
         },
       },
 
@@ -62,7 +62,7 @@ export const auth = (prisma: PrismaClient) => {
       trustedOrigins: [frontendUrl, baseUrl],
 
       secureCookies: nodeEnv === 'production',
-      sessionTokenExpiration: 60 * 60 * 24 * 7,
+      sessionTokenExpiration: 60 * 60 * 24 * 5, // 5 days
 
       account: {
         accountLinking: {

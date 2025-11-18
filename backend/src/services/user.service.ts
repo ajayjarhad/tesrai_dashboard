@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import type { Prisma, PrismaClient, Role, User } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { AuthTracer } from '../utils/tracing.js';
@@ -8,6 +7,7 @@ export interface CreateUserInput {
   email: string;
   role: Role;
   displayName?: string;
+  tempPassword: string;
 }
 
 interface CreateUserResponse {
@@ -20,18 +20,6 @@ export interface ResetPasswordInput {
   newPassword: string;
   confirmPassword: string;
   displayName?: string;
-}
-
-/**
- * Generate a secure random temporary password
- */
-function generateTempPassword(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-  let password = '';
-  for (let i = 0; i < 20; i++) {
-    password += chars.charAt(crypto.randomInt(0, chars.length));
-  }
-  return password;
 }
 
 /**
@@ -82,7 +70,11 @@ export async function createUserWithTempPassword(
     throw new Error('User with this email or username already exists');
   }
 
-  const tempPassword = generateTempPassword();
+  if (!userData.tempPassword || userData.tempPassword.length < 8) {
+    throw new Error('Temporary password must be at least 8 characters long');
+  }
+
+  const tempPassword = userData.tempPassword;
   const tempPasswordHash = await bcrypt.hash(tempPassword, 12);
   const tempPasswordExpiry = new Date(Date.now() + 72 * 60 * 60 * 1000);
 
@@ -143,8 +135,8 @@ export async function resetPasswordWithTemp(
     throw new Error('Passwords do not match');
   }
 
-  if (resetData.newPassword.length < 8) {
-    throw new Error('Password must be at least 8 characters long');
+  if (resetData.newPassword.length < 4) {
+    throw new Error('Password must be at least 4 characters long');
   }
 
   const user = await prisma.user.findUnique({

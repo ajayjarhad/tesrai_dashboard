@@ -130,14 +130,21 @@ export const useAuthStore = create<AuthStore>()(
                   displayName: data.displayName,
                 });
 
+                try {
+                  await apiClient.post('auth/sign-out');
+                } catch (logoutError) {
+                  console.warn('Failed to sign out after password setup', logoutError);
+                }
+
                 set({
+                  user: null,
+                  isAuthenticated: false,
+                  session: null,
                   isLoading: false,
                   error: null,
                 });
 
-                // Navigate to dashboard after successful password setup
-                // First time setup users go to dashboard
-                navigateAfterLogin({ mustResetPassword: false } as User);
+                navigateToLogin();
               } catch (error) {
                 set({
                   isLoading: false,
@@ -303,14 +310,21 @@ export const useAuthStore = create<AuthStore>()(
                 displayName: data.displayName,
               });
 
+              try {
+                await apiClient.post('auth/sign-out');
+              } catch (logoutError) {
+                console.warn('Failed to sign out after password setup', logoutError);
+              }
+
               set({
+                user: null,
+                isAuthenticated: false,
+                session: null,
                 isLoading: false,
                 error: null,
               });
 
-              // Navigate to dashboard after successful password setup
-              // First time setup users go to dashboard
-              navigateAfterLogin({ mustResetPassword: false } as User);
+              navigateToLogin();
             } catch (error) {
               set({
                 isLoading: false,

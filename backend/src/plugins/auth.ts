@@ -1,6 +1,8 @@
 import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from 'node:http';
+import { URL } from 'node:url';
 import bcrypt from 'bcryptjs';
 import cookie from 'cookie';
+import fp from 'fastify-plugin';
 import { auth } from '../config/auth.js';
 import type { AppFastifyInstance, AppFastifyReply, AppFastifyRequest } from '../types/app.js';
 
@@ -428,6 +430,72 @@ const finalizeAuthentication = async (
   });
 };
 
+const parseCookieHeader = (cookieHeader: string | string[] | undefined) => {
+  if (!cookieHeader) {
+    return null;
+  }
+
+  const raw = Array.isArray(cookieHeader) ? cookieHeader.join(';') : cookieHeader;
+
+  try {
+    return cookie.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+const extractSessionToken = (headers: IncomingHttpHeaders): string | null => {
+  const parsedCookies = parseCookieHeader(headers['cookie']);
+  if (!parsedCookies) {
+    return null;
+  }
+
+  return parsedCookies['better-auth.session_token'] ?? parsedCookies['session-token'] ?? null;
+};
+
+const fetchSessionFromDatabase = async (fastify: AppFastifyInstance, token: string) => {
+  try {
+    const sessionRecord = await fastify.prisma.session.findUnique({
+      where: { token },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            role: true,
+            displayName: true,
+            isActive: true,
+            mustResetPassword: true,
+          },
+        },
+      },
+    });
+
+    if (!sessionRecord) {
+      return null;
+    }
+
+    if (sessionRecord.expiresAt < new Date()) {
+      return null;
+    }
+
+    return {
+      session: {
+        id: sessionRecord.id,
+        token: sessionRecord.token,
+        expiresAt: sessionRecord.expiresAt,
+        createdAt: sessionRecord.createdAt,
+        updatedAt: sessionRecord.updatedAt,
+      },
+      user: sessionRecord.user,
+    };
+  } catch (error) {
+    fastify.log.error(error, 'Failed to fetch session from database');
+    return null;
+  }
+};
+
 const authPlugin = async (fastify: AppFastifyInstance) => {
   // Initialize auth with the shared Prisma client (will access prisma when needed)
   let authInstance: any = null;
@@ -451,12 +519,22 @@ const authPlugin = async (fastify: AppFastifyInstance) => {
     try {
       const authInstance = getAuthInstance();
       const session = await authInstance.api.getSession({
-        headers: this.headers,
+        headers: toFetchHeaders(this.headers),
       });
-      return session;
-    } catch {
+
+      if (session?.user) {
+        return session;
+      }
+    } catch (error) {
+      fastify.log.debug({ error }, 'Primary session lookup failed, attempting database fallback');
+    }
+
+    const token = extractSessionToken(this.headers);
+    if (!token) {
       return null;
     }
+
+    return fetchSessionFromDatabase(fastify, token);
   });
 
   fastify.decorateRequest('getCurrentUser', async function (this: AppFastifyRequest) {
@@ -483,17 +561,50 @@ const authPlugin = async (fastify: AppFastifyInstance) => {
     ) => Promise<void>;
   };
 
+  const localDevOrigins = Array.from({ length: 10 }, (_, idx) => `http://localhost:${5001 + idx}`);
   const allowedOrigins = [
     process.env['FRONTEND_URL'],
     'http://localhost:5000',
-    'http://localhost:5002',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    ...localDevOrigins,
   ].filter(Boolean) as string[];
+  const allowedOriginSet = new Set(allowedOrigins.map(origin => origin.toLowerCase()));
+
+  const isAllowedOrigin = (origin?: string | null) => {
+    if (!origin) return false;
+    const normalized = origin.toLowerCase();
+    if (allowedOriginSet.has(normalized)) {
+      return true;
+    }
+
+    try {
+      const parsed = new URL(origin);
+      const port = Number(parsed.port || (parsed.protocol === 'https:' ? 443 : 80));
+      if (
+        (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') &&
+        port >= 5001 &&
+        port <= 5010
+      ) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+
+    return false;
+  };
 
   const applyCorsHeaders = (request: AppFastifyRequest, reply: AppFastifyReply) => {
     const origin = request.headers.origin;
-    if (origin && allowedOrigins.includes(origin)) {
-      reply.header('Access-Control-Allow-Origin', origin);
-      reply.raw.setHeader('Access-Control-Allow-Origin', origin);
+    if (isAllowedOrigin(origin)) {
+      if (origin) {
+        reply.header('Access-Control-Allow-Origin', origin);
+        reply.raw.setHeader('Access-Control-Allow-Origin', origin);
+      }
+    } else {
+      reply.removeHeader('Access-Control-Allow-Origin');
+      reply.raw.removeHeader('Access-Control-Allow-Origin');
     }
     const credentials = 'true';
     const allowHeaders =
@@ -676,4 +787,6 @@ const authPlugin = async (fastify: AppFastifyInstance) => {
   });
 };
 
-export default authPlugin;
+export default fp(authPlugin, {
+  name: 'auth-plugin',
+});
