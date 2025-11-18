@@ -17,24 +17,36 @@ export default async function userRoutes(fastify: AppFastifyInstance) {
       schema: {
         body: {
           type: 'object',
-          required: ['username', 'email', 'role'],
+          required: ['username', 'email', 'role', 'tempPassword'],
           properties: {
             username: { type: 'string', minLength: 3, maxLength: 50 },
             email: { type: 'string', format: 'email' },
             role: { type: 'string', enum: ['ADMIN', 'USER'] },
             displayName: { type: 'string', maxLength: 100 },
+            tempPassword: { type: 'string', minLength: 8, maxLength: 128 },
           },
         },
       },
     },
     async (request: AppFastifyRequest, reply: AppFastifyReply) => {
       try {
-        const currentUser = await request.getCurrentUser();
+        let currentUser: Awaited<ReturnType<AppFastifyRequest['getCurrentUser']>> | null = null;
+        try {
+          currentUser = await request.getCurrentUser();
+        } catch (authError) {
+          fastify.log.error({ error: authError }, 'Error getting current user in POST /users');
+          return reply.code(401).send({
+            success: false,
+            error: 'Authentication required',
+            code: 'AUTH_ERROR',
+          });
+        }
 
         if (!currentUser) {
           return reply.code(401).send({
             success: false,
             error: 'Authentication required',
+            code: 'AUTH_REQUIRED',
           });
         }
 
@@ -238,7 +250,7 @@ export default async function userRoutes(fastify: AppFastifyInstance) {
           required: ['tempPassword', 'newPassword', 'confirmPassword'],
           properties: {
             tempPassword: { type: 'string' },
-            newPassword: { type: 'string', minLength: 8, maxLength: 128 },
+            newPassword: { type: 'string', minLength: 4, maxLength: 128 },
             confirmPassword: { type: 'string' },
             displayName: { type: 'string', maxLength: 100 },
           },

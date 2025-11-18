@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-router';
 import { PERMISSIONS } from '@tensrai/shared';
 import { UserManagement } from '@/features/admin/components';
+import { TemporaryUserCreation } from '@/features/admin/components/temporary-user-creation';
 import { FirstTimePasswordForm, LoginForm } from '@/features/auth/components';
 import type { NavigationService } from '@/lib/navigation';
 import { setNavigationService } from '@/lib/navigation';
@@ -147,6 +148,14 @@ const userManagementRoute = createRoute({
   },
 });
 
+const createTempUserRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: '/create-temporary-user',
+  component: () => {
+    return <TemporaryUserCreation />;
+  },
+});
+
 // Unauthorized Route
 const unauthorizedRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -202,7 +211,7 @@ const unauthorizedRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   authRoute.addChildren([loginRoute, firstTimeSetupRoute]),
-  adminRoute.addChildren([userManagementRoute]),
+  adminRoute.addChildren([userManagementRoute, createTempUserRoute]),
   unauthorizedRoute,
 ]);
 

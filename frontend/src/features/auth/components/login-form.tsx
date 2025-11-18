@@ -17,7 +17,8 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid },
+    watch,
+    formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(loginSchema),
     mode: 'onChange',
@@ -27,8 +28,12 @@ export function LoginForm() {
     },
   });
 
+  const username = watch('username');
+  const password = watch('password');
+  const canSubmit = Boolean(username?.trim().length && password?.trim().length);
+
   const onSubmit = async (data: { username: string; password: string }) => {
-    if (isLoading) return;
+    if (isLoading || isSubmitting || !canSubmit) return;
     console.log('Form submitted with data:', data);
     await login(data);
   };
@@ -74,9 +79,9 @@ export function LoginForm() {
           </div>
 
           <LoadingButton
-            loading={isLoading}
+            loading={isLoading || isSubmitting}
             loadingText="Signing in..."
-            disabled={!isValid}
+            disabled={!canSubmit || isLoading || isSubmitting}
             className="w-full"
           >
             Sign in

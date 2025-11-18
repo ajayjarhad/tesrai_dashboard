@@ -1,5 +1,6 @@
+import { useNavigate } from '@tanstack/react-router';
 import type { CreateUserInput, User } from '@tensrai/shared';
-import type React from 'react';
+import type { FormEvent } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { useAuth } from '@/stores/auth';
@@ -11,6 +12,7 @@ interface CreateUserResponse {
 
 export function UserManagement() {
   const { user: currentUser, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export function UserManagement() {
     loadUsers();
   }, [isAdmin, loadUsers]);
 
-  const handleCreateUser = async (e: React.FormEvent) => {
+  const handleCreateUser = async (e: FormEvent) => {
     e.preventDefault();
 
     try {
@@ -98,13 +100,22 @@ export function UserManagement() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-foreground">User Management</h1>
-        <button
-          type="button"
-          onClick={() => setShowCreateForm(true)}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium focus-ring"
-        >
-          Create User
-        </button>
+        <div className="flex space-x-3">
+          <button
+            type="button"
+            onClick={() => navigate({ to: '/admin/create-temporary-user' })}
+            className="bg-secondary hover:bg-secondary/90 text-secondary-foreground px-4 py-2 rounded-md text-sm font-medium focus-ring"
+          >
+            Create Temporary User
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowCreateForm(true)}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium focus-ring"
+          >
+            Create User
+          </button>
+        </div>
       </div>
 
       {error && (

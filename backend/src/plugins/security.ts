@@ -1,6 +1,7 @@
+import { URL } from 'node:url';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
-import rateLimit from '@fastify/rate-limit';
+import fp from 'fastify-plugin';
 import type { AppFastifyInstance, AppFastifyReply, AppFastifyRequest } from '../types/app.js';
 
 /**
@@ -31,19 +32,44 @@ const securityPlugin = async (fastify: AppFastifyInstance) => {
   });
 
   const frontendUrl = process.env['FRONTEND_URL'];
+  const localDevOrigins = Array.from({ length: 10 }, (_, idx) => `http://localhost:${5001 + idx}`);
+  const explicitOrigins = [
+    frontendUrl || 'http://localhost:5173',
+    'http://localhost:5000',
+    'http://localhost:5174',
+    ...localDevOrigins,
+  ];
+  const allowedOriginSet = new Set(
+    explicitOrigins.filter(Boolean).map(origin => origin.toLowerCase())
+  );
+
+  const isAllowedOrigin = (origin?: string | null) => {
+    if (!origin) return true;
+    const normalized = origin.toLowerCase();
+    if (allowedOriginSet.has(normalized)) {
+      return true;
+    }
+
+    try {
+      const parsed = new URL(origin);
+      const port = Number(parsed.port || (parsed.protocol === 'https:' ? 443 : 80));
+      if (
+        (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') &&
+        port >= 5001 &&
+        port <= 5010
+      ) {
+        return true;
+      }
+    } catch {
+      // ignore URL parse failures
+    }
+
+    return false;
+  };
 
   await fastify.register(cors, {
     origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
-      const allowedOrigins = [
-        frontendUrl || 'http://localhost:5173',
-        'http://localhost:5001',
-        'http://localhost:5000',
-        'http://localhost:5174',
-      ];
-
-      if (!origin) return cb(null, true);
-
-      if (allowedOrigins.includes(origin)) {
+      if (isAllowedOrigin(origin)) {
         return cb(null, true);
       }
 
@@ -71,30 +97,12 @@ const securityPlugin = async (fastify: AppFastifyInstance) => {
     exposedHeaders: ['Set-Cookie'],
   });
 
-  await fastify.register(rateLimit, {
-    max: 100,
-    timeWindow: '1 minute',
-    hook: 'preHandler',
-    keyGenerator: (request: AppFastifyRequest) => request.ip,
-  });
-
-  await fastify.register(rateLimit, {
-    max: 5,
-    timeWindow: '15 minutes',
-    hook: 'preHandler',
-    keyGenerator: (request: AppFastifyRequest) => `auth:${request.ip}`,
-  });
+  // Rate limiting temporarily disabled for local development
 
   fastify.addHook('onSend', async (request: AppFastifyRequest, reply: AppFastifyReply) => {
     const origin = request.headers.origin;
-    const allowedOrigins = [
-      frontendUrl || 'http://localhost:5173',
-      'http://localhost:5001',
-      'http://localhost:5000',
-      'http://localhost:5174',
-    ];
 
-    if (origin && allowedOrigins.includes(origin)) {
+    if (origin && isAllowedOrigin(origin)) {
       reply.header('Access-Control-Allow-Origin', origin);
       reply.header('Vary', 'Origin');
       reply.header('Access-Control-Allow-Credentials', 'true');
@@ -142,10 +150,12 @@ const securityPlugin = async (fastify: AppFastifyInstance) => {
     security: {
       helmet: 'enabled',
       cors: 'enabled',
-      rateLimit: 'enabled',
+      rateLimit: 'disabled',
       timestamp: new Date().toISOString(),
     },
   }));
 };
 
-export default securityPlugin;
+export default fp(securityPlugin, {
+  name: 'security-plugin',
+});
