@@ -6,6 +6,7 @@ yarn-error.log*
 pnpm-debug.log*
 bun.lockb
 package-lock.json
+yarn.lock
 
 # Production builds
 dist/
@@ -150,9 +151,17 @@ logs
 # Biome
 .biome/
 
+# Bun
+.bun-cache/
+
 # Temporary files
 *.tmp
 *.temp
 
 # OpenSpec
 openspec
+/generated/prisma
+
+# TypeScript declaration files
+dist/
+dist-types/
