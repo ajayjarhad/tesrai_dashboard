@@ -1,8 +1,3 @@
-/**
- * Optimized PGM (Portable Gray Map) Parser for Large Files
- * Supports binary PGM (P5) format with chunked processing
- */
-
 export interface ParsedPGM {
   width: number;
   height: number;
@@ -11,9 +6,9 @@ export interface ParsedPGM {
 }
 
 export interface PGMProcessingOptions {
-  chunkSize?: number; // Process PGM in chunks to avoid memory issues
-  progressCallback?: (progress: number) => void; // Progress callback for long operations
-  quality?: number; // Quality factor for data reduction (1-100)
+  chunkSize?: number;
+  progressCallback?: (progress: number) => void;
+  quality?: number;
 }
 
 export interface OptimizedPGMResult {
@@ -23,12 +18,6 @@ export interface OptimizedPGMResult {
   compressedSize: number;
 }
 
-/**
- * Parse binary PGM data from ArrayBuffer with optimizations for large files
- * @param buffer ArrayBuffer containing PGM data
- * @param options Optimization options
- * @returns Optimized PGM result with performance metrics
- */
 export async function parsePGMOptimized(
   buffer: ArrayBuffer,
   options: PGMProcessingOptions = {}
@@ -290,7 +279,17 @@ function skipWhitespace(dataView: DataView, offset: number): number {
   let currentOffset = offset;
   while (currentOffset < dataView.byteLength) {
     const char = String.fromCharCode(dataView.getUint8(currentOffset));
-    if (char === ' ' || char === '\t' || char === '\n' || char === '\r') {
+
+    // Handle comments
+    if (char === '#') {
+      // Skip until newline
+      while (
+        currentOffset < dataView.byteLength &&
+        String.fromCharCode(dataView.getUint8(currentOffset)) !== '\n'
+      ) {
+        currentOffset++;
+      }
+    } else if (char === ' ' || char === '\t' || char === '\n' || char === '\r') {
       currentOffset++;
     } else {
       break;

@@ -1,17 +1,15 @@
-/**
- * Simple map renderer using react-konva
- */
-
 import type { ProcessedMapData } from '@tensrai/shared';
 import type Konva from 'konva';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Image as KonvaImage, Layer, Stage } from 'react-konva';
+import { useEffect, useRef } from 'react';
 import { useElementSize } from '../../../hooks/useElementSize';
+import { useMapControls } from '../hooks/useMapControls';
 import { useMapFitting } from '../hooks/useMapFitting';
 import { useMapImage } from '../hooks/useMapImage';
+import { useMapLocations } from '../hooks/useMapLocations';
 import { useZoom } from '../hooks/useZoom';
+import { MapContent } from './MapContent';
 import { MapErrorBoundary } from './MapErrorBoundary';
-import { MapToolbar } from './MapToolbar';
+import { MapOverlay } from './MapOverlay';
 
 interface MapStageProps {
   mapData: ProcessedMapData | null;
@@ -20,6 +18,8 @@ interface MapStageProps {
   width?: number | string;
   height?: number | string;
   className?: string;
+  onSelectMap?: (mapId: 'r1' | 'r2') => void;
+  selectedMapId?: 'r1' | 'r2';
 }
 
 export function MapStage({
@@ -29,13 +29,23 @@ export function MapStage({
   width = '100%',
   height = '100%',
   className,
+  onSelectMap,
+  selectedMapId,
 }: MapStageProps) {
-  const [rotation, setRotation] = useState(0);
   const stageRef = useRef<Konva.Stage>(null);
-  const mapImage = useMapImage(mapData, 'map-stage');
+  const mapGroupRef = useRef<Konva.Group>(null);
+  const pinRef = useRef<Konva.Group>(null);
+  const transformerRef = useRef<Konva.Transformer>(null);
+  const mapImage = useMapImage(mapData, selectedMapId || 'default');
   const { ref: containerRef, size: containerSize } = useElementSize<HTMLDivElement>();
-  const mapWidth = mapData?.meta.width ?? 0;
-  const mapHeight = mapData?.meta.height ?? 0;
+
+  const { locations, locationMode, tempLocation, handleAddLocation, handleStageClick } =
+    useMapLocations({
+      mapData,
+      mapGroupRef,
+      pinRef,
+      transformerRef,
+    });
 
   const resolvedWidth = typeof width === 'number' ? width : containerSize.width || 800;
   const resolvedHeight = typeof height === 'number' ? height : containerSize.height || 600;
@@ -51,76 +61,15 @@ export function MapStage({
     height: resolvedHeight,
   });
 
-  const handleWheel = useZoom({
-    enableZooming,
-    onZoom: undefined,
+  const { rotation, zoomBy, rotateStage, resetView } = useMapControls({
+    stageRef,
+    mapData,
+    fitStageToMap,
   });
 
-  const zoomBy = useCallback(
-    (direction: 'in' | 'out') => {
-      const stage = stageRef.current;
-      if (!stage || !mapData) return;
-
-      const oldScale = stage.scaleX();
-      const scaleBy = 1.2;
-      const newScale = direction === 'in' ? oldScale * scaleBy : oldScale / scaleBy;
-      const clampedScale = Math.max(0.1, Math.min(10, newScale));
-
-      const center = {
-        x: stage.width() / 2,
-        y: stage.height() / 2,
-      };
-
-      const relatedTo = {
-        x: (center.x - stage.x()) / oldScale,
-        y: (center.y - stage.y()) / oldScale,
-      };
-
-      const newPos = {
-        x: center.x - relatedTo.x * clampedScale,
-        y: center.y - relatedTo.y * clampedScale,
-      };
-
-      stage.scale({ x: clampedScale, y: clampedScale });
-      stage.position(newPos);
-      stage.batchDraw();
-    },
-    [mapData]
-  );
-
-  const rotateStage = useCallback((deltaDegrees: number) => {
-    setRotation(prev => prev + deltaDegrees);
-  }, []);
-
-  const resetView = useCallback(() => {
-    setRotation(0);
-    fitStageToMap();
-    const stage = stageRef.current;
-    if (stage) {
-      stage.rotation(0);
-      stage.batchDraw();
-    }
-  }, [fitStageToMap]);
-
-  useEffect(() => {
-    if (!mapData || !stageRef.current) return;
-
-    const stage = stageRef.current;
-    const { width: mWidth, height: mHeight } = mapData.meta;
-
-    const stageWidth = stage.width();
-    const stageHeight = stage.height();
-    const scaleX = stageWidth / mWidth;
-    const scaleY = stageHeight / mHeight;
-    const fitScale = Math.min(scaleX, scaleY) * 0.9;
-
-    stage.scale({ x: fitScale, y: fitScale });
-    stage.position({
-      x: (stageWidth - mWidth * fitScale) / 2,
-      y: (stageHeight - mHeight * fitScale) / 2,
-    });
-    stage.batchDraw();
-  }, [mapData]);
+  const handleWheel = useZoom({
+    enableZooming,
+  });
 
   useEffect(() => {
     if (mapImage && stageRef.current) {
@@ -142,38 +91,35 @@ export function MapStage({
   return (
     <MapErrorBoundary>
       <div ref={containerRef} className={`relative ${className || ''}`} style={containerStyle}>
-        <Stage
-          ref={stageRef}
+        <MapContent
+          stageRef={stageRef}
+          mapGroupRef={mapGroupRef}
+          pinRef={pinRef}
+          transformerRef={transformerRef}
           width={resolvedWidth}
           height={resolvedHeight}
-          draggable={enablePanning}
-          onWheel={handleWheel}
-        >
-          <Layer>
-            {mapImage && (
-              <KonvaImage
-                image={mapImage}
-                x={mapWidth / 2}
-                y={mapHeight / 2}
-                offsetX={mapWidth / 2}
-                offsetY={mapHeight / 2}
-                width={mapWidth}
-                height={mapHeight}
-                rotation={rotation}
-              />
-            )}
-          </Layer>
-        </Stage>
+          mapData={mapData}
+          mapImage={mapImage}
+          rotation={rotation}
+          locations={locations}
+          tempLocation={tempLocation}
+          locationMode={locationMode}
+          enablePanning={enablePanning}
+          handleWheel={handleWheel}
+          handleStageClick={handleStageClick}
+        />
 
-        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-          <MapToolbar
-            onZoomIn={() => zoomBy('in')}
-            onZoomOut={() => zoomBy('out')}
-            onRotateLeft={() => rotateStage(-15)}
-            onRotateRight={() => rotateStage(15)}
-            onRecenter={resetView}
-          />
-        </div>
+        <MapOverlay
+          onZoomIn={() => zoomBy('in')}
+          onZoomOut={() => zoomBy('out')}
+          onRotateLeft={() => rotateStage(-15)}
+          onRotateRight={() => rotateStage(15)}
+          onRecenter={resetView}
+          onAddLocation={handleAddLocation}
+          locationMode={locationMode}
+          onSelectMap={onSelectMap}
+          selectedMapId={selectedMapId}
+        />
       </div>
     </MapErrorBoundary>
   );

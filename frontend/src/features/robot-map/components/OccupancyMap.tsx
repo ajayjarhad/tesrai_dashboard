@@ -1,59 +1,30 @@
+import { useState } from 'react';
 import { useOccupancyMap } from '../hooks/useOccupancyMap';
 import { MapStage } from './MapStage';
 
 interface OccupancyMapProps {
-  /**
-   * Path to the map YAML file
-   */
   mapYamlPath: string;
-
-  /**
-   * Initial zoom level
-   * @default 1.0
-   */
-  initialZoom?: number;
-
-  /**
-   * Whether to enable panning with mouse drag
-   * @default true
-   */
   enablePanning?: boolean;
-
-  /**
-   * Whether to enable zooming with mouse wheel
-   * @default true
-   */
   enableZooming?: boolean;
-
-  /**
-   * Width of the stage
-   * @default '100%'
-   */
   width?: string | number;
-
-  /**
-   * Height of the stage
-   * @default '100%'
-   */
   height?: string | number;
-
-  /**
-   * CSS class name
-   */
   className?: string;
 }
 
 export function OccupancyMap({
-  mapYamlPath,
-  initialZoom = 1.0,
+  mapYamlPath: initialMapYamlPath,
   enablePanning = true,
   enableZooming = true,
   width = '100%',
   height = '100%',
   className,
 }: OccupancyMapProps) {
+  const [activeMapId, setActiveMapId] = useState<'r1' | 'r2'>('r1');
+
+  const currentYamlPath = activeMapId === 'r1' ? initialMapYamlPath : 'assets/map2.yaml';
+
   const mapState = useOccupancyMap({
-    mapYamlPath,
+    mapYamlPath: currentYamlPath,
     autoLoad: true,
     useOptimizedParser: true,
   });
@@ -91,6 +62,8 @@ export function OccupancyMap({
       className={className || ''}
       enablePanning={enablePanning}
       enableZooming={enableZooming}
+      onSelectMap={setActiveMapId}
+      selectedMapId={activeMapId}
     />
   );
 }

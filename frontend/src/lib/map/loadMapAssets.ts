@@ -1,35 +1,22 @@
-/**
- * Map Asset Loading and Processing Utilities
- * Handles ROS map.yaml and .pgm files
- */
-
 import type { MapYamlMetadata, ProcessedMapData } from '@tensrai/shared';
 import { load } from 'js-yaml';
-import { type ParsedPGM, parsePGM } from './pgm-parser';
-import { type OptimizedPGMResult, parsePGMOptimized } from './pgm-parser-optimized';
-
-// Union type for PGM parser results
-type PGMResult = ParsedPGM | OptimizedPGMResult['parsedPGM'];
 
 export interface LoadMapAssetsOptions {
   yamlPath: string;
   basePath?: string;
   cacheEnabled?: boolean;
-  timeout?: number; // Timeout in milliseconds
-  useOptimizedParser?: boolean; // Use optimized PGM parser for large files
-  pgmQuality?: number; // Quality factor for PGM processing (1-100)
-  chunkSize?: number; // Chunk size for processing large PGM files
-  progressCallback?: (progress: number) => void; // Progress callback for long operations
-  retryFailedOperations?: boolean; // Whether to retry failed operations
-  maxRetries?: number; // Maximum number of retries
+  timeout?: number;
+  useOptimizedParser?: boolean;
+  pgmQuality?: number;
+  chunkSize?: number;
+  progressCallback?: (progress: number) => void;
+  retryFailedOperations?: boolean;
+  maxRetries?: number;
 }
 
-/**
- * Cache configuration for loaded map assets
- */
 const CACHE_CONFIG = {
-  MAX_SIZE: 10, // Maximum number of maps to cache
-  DEFAULT_TIMEOUT: 30000, // 30 seconds timeout
+  MAX_SIZE: 10,
+  DEFAULT_TIMEOUT: 30000,
 };
 
 // Module-level cache state
@@ -37,13 +24,9 @@ const cache = new Map<string, { promise: Promise<ProcessedMapData>; timestamp: n
 const accessOrder = new Map<string, number>();
 let counter = 0;
 
-/**
- * Get entry from cache
- */
 function getFromCache(key: string): Promise<ProcessedMapData> | undefined {
   const entry = cache.get(key);
   if (entry) {
-    // Update access order
     counter++;
     accessOrder.set(key, counter);
     return entry.promise;
@@ -51,9 +34,6 @@ function getFromCache(key: string): Promise<ProcessedMapData> | undefined {
   return undefined;
 }
 
-/**
- * Evict oldest entry from cache
- */
 function evictOldest(): void {
   let oldestKey: string | undefined;
   let oldestAccess = Infinity;
@@ -70,11 +50,7 @@ function evictOldest(): void {
   }
 }
 
-/**
- * Add entry to cache
- */
 function addToCache(key: string, promise: Promise<ProcessedMapData>): void {
-  // Evict oldest entry if cache is full
   if (cache.size >= CACHE_CONFIG.MAX_SIZE) {
     evictOldest();
   }
@@ -84,46 +60,26 @@ function addToCache(key: string, promise: Promise<ProcessedMapData>): void {
   accessOrder.set(key, counter);
 }
 
-/**
- * Delete entry from cache
- */
 function deleteFromCache(key: string): boolean {
   const deleted = cache.delete(key);
   accessOrder.delete(key);
   return deleted;
 }
 
-/**
- * Clear the cache
- */
 function clearCache(): void {
   cache.clear();
   accessOrder.clear();
   counter = 0;
 }
 
-/**
- * Get all cache keys
- */
 function getCacheKeys(): string[] {
   return Array.from(cache.keys());
 }
 
-/**
- * Get cache size
- */
 function getCacheSize(): number {
   return cache.size;
 }
 
-/**
- * Load and process ROS map assets from YAML and PGM files
- * @param options Loading options including YAML path
- * @returns Promise resolving to processed map data
- */
-/**
- * Delay utility for retry logic
- */
 const delay = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
@@ -171,11 +127,28 @@ async function fetchWithRetry(
     }
   }
 
-  // This should never be reached, but provide a safe fallback
   throw new Error('Failed to fetch: Unknown error');
 }
 
-export async function loadMapAssets(options: LoadMapAssetsOptions): Promise<ProcessedMapData> {
+import type { MapWorkerRequest, MapWorkerResponse } from './map.worker';
+import MapWorker from './map.worker?worker';
+
+export interface ProcessedMapDataWithBitmap extends ProcessedMapData {
+  imageBitmap?: ImageBitmap;
+}
+
+let mapWorker: Worker | null = null;
+
+function getMapWorker(): Worker {
+  if (!mapWorker) {
+    mapWorker = new MapWorker();
+  }
+  return mapWorker;
+}
+
+export async function loadMapAssets(
+  options: LoadMapAssetsOptions
+): Promise<ProcessedMapDataWithBitmap> {
   const {
     yamlPath,
     basePath = '',
@@ -188,14 +161,14 @@ export async function loadMapAssets(options: LoadMapAssetsOptions): Promise<Proc
   if (cacheEnabled) {
     const cachedPromise = getFromCache(cacheKey);
     if (cachedPromise) {
-      return cachedPromise;
+      return cachedPromise as Promise<ProcessedMapDataWithBitmap>;
     }
   }
 
-  // Create loading promise and cache it
+  // Create loading promise
   const loadingPromise = (async () => {
     try {
-      // Load and parse YAML metadata with retry
+      // 1. Load YAML
       const yamlUrl = resolvePath(yamlPath, basePath);
       const yamlResponse = await fetchWithRetry(yamlUrl, {
         timeout,
@@ -203,17 +176,11 @@ export async function loadMapAssets(options: LoadMapAssetsOptions): Promise<Proc
         retryDelay: 1000,
       });
 
-      if (!yamlResponse.ok) {
-        throw new Error(`Failed to load map YAML: ${yamlUrl} (${yamlResponse.status})`);
-      }
-
+      if (!yamlResponse.ok) throw new Error(`Failed to load YAML: ${yamlResponse.status}`);
       const yamlText = await yamlResponse.text();
       const yamlMetadata = load(yamlText) as MapYamlMetadata;
-
-      // Validate YAML metadata
       validateYamlMetadata(yamlMetadata);
 
-      // Load PGM image data with retry
       const pgmUrl = resolvePath(yamlMetadata.image, yamlPath);
       const pgmResponse = await fetchWithRetry(pgmUrl, {
         timeout,
@@ -221,51 +188,55 @@ export async function loadMapAssets(options: LoadMapAssetsOptions): Promise<Proc
         retryDelay: 1000,
       });
 
-      if (!pgmResponse.ok) {
-        throw new Error(`Failed to load PGM image: ${pgmUrl} (${pgmResponse.status})`);
-      }
-
+      if (!pgmResponse.ok) throw new Error(`Failed to load PGM: ${pgmResponse.status}`);
       const pgmBuffer = await pgmResponse.arrayBuffer();
 
-      // Use optimized parser for large files or when explicitly requested
-      let parsedPGM: PGMResult;
-      const useOptimized = options.useOptimizedParser ?? pgmBuffer.byteLength > 5 * 1024 * 1024; // Auto-use for files > 5MB
+      const worker = getMapWorker();
 
-      if (useOptimized) {
-        const processingOptions: any = {
-          quality: options.pgmQuality || 100,
+      const result = await new Promise<MapWorkerResponse>((resolve, reject) => {
+        const handleMessage = (e: MessageEvent<MapWorkerResponse>) => {
+          if (e.data.type === 'MAP_PROCESSED') {
+            worker.removeEventListener('message', handleMessage);
+            if (e.data.error) reject(new Error(e.data.error));
+            else resolve(e.data);
+          }
         };
 
-        if (options.chunkSize !== undefined) {
-          processingOptions.chunkSize = options.chunkSize;
-        }
+        worker.addEventListener('message', handleMessage);
 
-        if (options.progressCallback !== undefined) {
-          processingOptions.progressCallback = options.progressCallback;
-        }
+        worker.postMessage(
+          {
+            type: 'PROCESS_MAP',
+            pgmBuffer,
+            yaml: yamlMetadata,
+            useOptimized: options.useOptimizedParser ?? pgmBuffer.byteLength > 5 * 1024 * 1024,
+            pgmQuality: options.pgmQuality,
+          } as MapWorkerRequest,
+          [pgmBuffer]
+        );
+      });
 
-        const optimizedResult = await parsePGMOptimized(pgmBuffer, processingOptions);
-        parsedPGM = optimizedResult.parsedPGM;
-      } else {
-        parsedPGM = parsePGM(pgmBuffer);
-      }
-
-      // Convert PGM to ImageData with ROS occupancy semantics
-      const imageData = convertPGMToImageData(parsedPGM, yamlMetadata);
-
-      // Extract metadata for coordinate transformations
       const meta = {
-        width: parsedPGM.width,
-        height: parsedPGM.height,
+        width: result.width,
+        height: result.height,
         resolution: yamlMetadata.resolution,
         origin: yamlMetadata.origin,
         occupiedThresh: yamlMetadata.occupied_thresh ?? 0.65,
         freeThresh: yamlMetadata.free_thresh ?? 0.196,
       };
 
-      return { imageData, meta };
+      const processedData: ProcessedMapDataWithBitmap = {
+        imageData: {
+          width: result.width,
+          height: result.height,
+          data: new Uint8ClampedArray(0),
+        },
+        meta,
+        imageBitmap: result.bitmap,
+      };
+
+      return processedData;
     } catch (error) {
-      // Remove from cache on error
       deleteFromCache(cacheKey);
       throw error;
     }
@@ -278,9 +249,6 @@ export async function loadMapAssets(options: LoadMapAssetsOptions): Promise<Proc
   return loadingPromise;
 }
 
-/**
- * Resolve a path relative to a base path or URL
- */
 function resolvePath(path: string, basePath: string): string {
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
@@ -291,7 +259,6 @@ function resolvePath(path: string, basePath: string): string {
 
   let viteBase = '/';
   try {
-    // Safe access to import.meta.env.BASE_URL if available in the environment
     if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) {
       viteBase = import.meta.env.BASE_URL;
     }
@@ -326,9 +293,6 @@ function resolvePath(path: string, basePath: string): string {
   return new URL(path, baseDir).href;
 }
 
-/**
- * Validate YAML metadata structure and values
- */
 function validateYamlMetadata(metadata: MapYamlMetadata): void {
   if (!metadata.image) {
     throw new Error('Map YAML missing required "image" field');
@@ -349,66 +313,15 @@ function validateYamlMetadata(metadata: MapYamlMetadata): void {
   });
 }
 
-/**
- * Convert PGM data to ImageData with ROS occupancy grid semantics
- */
-function convertPGMToImageData(
-  pgm: PGMResult,
-  yaml: MapYamlMetadata
-): {
-  data: Uint8ClampedArray;
-  width: number;
-  height: number;
-} {
-  const { width, height, maxVal, data } = pgm;
-  const { negate = 0 } = yaml;
-
-  const rgbaBuffer = new Uint8ClampedArray(width * height * 4);
-
-  for (let i = 0; i < width * height; i++) {
-    let intensity = data[i];
-
-    // Normalize to 0-255 range if maxVal < 255
-    if (maxVal !== 255) {
-      intensity = Math.round((intensity / maxVal) * 255);
-    }
-
-    if (negate === 1) {
-      intensity = 255 - intensity;
-    }
-
-    const pixelIndex = i * 4;
-    rgbaBuffer[pixelIndex] = intensity;
-    rgbaBuffer[pixelIndex + 1] = intensity;
-    rgbaBuffer[pixelIndex + 2] = intensity;
-    rgbaBuffer[pixelIndex + 3] = 255;
-  }
-
-  return {
-    data: rgbaBuffer,
-    width,
-    height,
-  };
-}
-
-/**
- * Clear the map asset cache
- */
 export function clearMapAssetCache(): void {
   clearCache();
 }
 
-/**
- * Remove specific map from cache
- */
 export function evictFromCache(yamlPath: string, basePath: string = ''): void {
   const cacheKey = `${basePath}${yamlPath}`;
   deleteFromCache(cacheKey);
 }
 
-/**
- * Get cache statistics
- */
 export function getCacheStats(): { size: number; keys: string[]; maxSize: number } {
   return {
     size: getCacheSize(),
@@ -417,5 +330,4 @@ export function getCacheStats(): { size: number; keys: string[]; maxSize: number
   };
 }
 
-// Re-export for explicit module resolution
 export { loadMapAssets as default };

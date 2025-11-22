@@ -5,5 +5,5 @@
 
 export { MapErrorBoundary } from './MapErrorBoundary';
 export { MapStage } from './MapStage';
-export { OccupancyMap } from './OccupancyMap';
 export { MapToolbar } from './MapToolbar';
+export { OccupancyMap } from './OccupancyMap';

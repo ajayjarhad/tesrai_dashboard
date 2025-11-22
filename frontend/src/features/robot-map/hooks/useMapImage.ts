@@ -1,58 +1,100 @@
 import type { ProcessedMapData } from '@tensrai/shared';
 import { useEffect, useRef, useState } from 'react';
 
-/**
- * Builds a canvas from ProcessedMapData.imageData and returns it for KonvaImage.
- */
-export function useMapImage(mapData: ProcessedMapData | null | undefined, mapId: string = 'map') {
-  const canvasCache = useRef<Map<string, HTMLCanvasElement>>(new Map());
-  const [image, setImage] = useState<HTMLCanvasElement | undefined>(undefined);
+interface ProcessedMapDataWithBitmap extends ProcessedMapData {
+  imageBitmap?: ImageBitmap;
+}
+
+export function useMapImage(
+  mapData: ProcessedMapDataWithBitmap | null | undefined,
+  mapId: string = 'map'
+) {
+  const imageCache = useRef<Map<string, ImageBitmap | HTMLCanvasElement>>(new Map());
+  // Track which bitmaps we created locally so we only close those
+  const ownedBitmaps = useRef<Set<ImageBitmap>>(new Set());
+  const [image, setImage] = useState<ImageBitmap | HTMLCanvasElement | undefined>(undefined);
 
   useEffect(() => {
-    if (!mapData || !mapData.imageData) {
+    if (!mapData) {
       setImage(undefined);
       return;
     }
 
-    const cached = canvasCache.current.get(mapId);
+    const dataWithBitmap = mapData as ProcessedMapDataWithBitmap;
+    if (dataWithBitmap.imageBitmap) {
+      setImage(dataWithBitmap.imageBitmap);
+      return;
+    }
+
+    const cached = imageCache.current.get(mapId);
     if (cached) {
       setImage(cached);
       return;
     }
 
     const { imageData } = mapData;
-    if (!imageData.width || !imageData.height || !imageData.data) {
-      setImage(undefined);
+    if (
+      !imageData ||
+      !imageData.width ||
+      !imageData.height ||
+      !imageData.data ||
+      imageData.data.length === 0
+    ) {
+      if (!dataWithBitmap.imageBitmap) {
+        setImage(undefined);
+      }
       return;
     }
 
-    const canvas = document.createElement('canvas');
-    canvas.width = imageData.width;
-    canvas.height = imageData.height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      setImage(undefined);
-      return;
-    }
+    const createBitmap = async () => {
+      try {
+        const clampedData = new Uint8ClampedArray(
+          imageData.data.buffer,
+          imageData.data.byteOffset,
+          imageData.data.byteLength
+        );
+        const imgData = new ImageData(clampedData as any, imageData.width, imageData.height);
 
-    const imgData = new ImageData(
-      new Uint8ClampedArray(imageData.data),
-      imageData.width,
-      imageData.height
-    );
-    ctx.putImageData(imgData, 0, 0);
+        const bitmap = await createImageBitmap(imgData);
+        ownedBitmaps.current.add(bitmap);
+        imageCache.current.set(mapId, bitmap);
+        setImage(bitmap);
+      } catch (_error) {
+        const canvas = document.createElement('canvas');
+        canvas.width = imageData.width;
+        canvas.height = imageData.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const clampedData = new Uint8ClampedArray(
+            imageData.data.buffer,
+            imageData.data.byteOffset,
+            imageData.data.byteLength
+          );
+          const imgData = new ImageData(clampedData as any, imageData.width, imageData.height);
+          ctx.putImageData(imgData, 0, 0);
+          imageCache.current.set(mapId, canvas);
+          setImage(canvas);
+        }
+      }
+    };
 
-    canvasCache.current.set(mapId, canvas);
-    setImage(canvas);
+    createBitmap();
   }, [mapData, mapId]);
 
   useEffect(() => {
     return () => {
-      canvasCache.current.forEach(c => {
-        c.width = 0;
-        c.height = 0;
+      imageCache.current.forEach(img => {
+        if (img instanceof ImageBitmap) {
+          if (ownedBitmaps.current.has(img)) {
+            img.close();
+          }
+        } else {
+          img.width = 0;
+          img.height = 0;
+        }
       });
-      canvasCache.current.clear();
+      imageCache.current.clear();
+      ownedBitmaps.current.clear();
     };
   }, []);
 
