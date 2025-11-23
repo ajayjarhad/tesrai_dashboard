@@ -1,4 +1,6 @@
-import { Battery, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { Battery, ChevronLeft, ChevronRight, LogOut, MapPin, Settings } from 'lucide-react';
+import { useAuth } from '@/stores/auth';
 import { cn } from '../../../lib/utils';
 import type { Robot } from '../../../types/robot';
 
@@ -19,6 +21,9 @@ export function RobotSidebar({
   onToggle,
   className,
 }: RobotSidebarProps) {
+  const navigate = useNavigate();
+  const { user, isAdmin, logout } = useAuth();
+  const isUserAdmin = typeof isAdmin === 'function' ? isAdmin() : Boolean(isAdmin);
   const selectedRobot = robots.find(r => r.id === selectedRobotId);
 
   return (
@@ -174,6 +179,77 @@ export function RobotSidebar({
               ))}
             </div>
           ))}
+      </div>
+
+      <div className="p-4 border-t border-border bg-card">
+        {isOpen ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-foreground/80 text-sm font-semibold">
+                {user?.displayName?.slice(0, 1)?.toUpperCase() || 'U'}
+              </div>
+              <div>
+                <div className="text-sm font-medium text-foreground">
+                  {user?.displayName || user?.username || 'User'}
+                </div>
+                <div className="text-xs text-muted-foreground">{user?.role || 'USER'}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {isUserAdmin && (
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: '/admin/users' })}
+                  className="p-2 rounded-md hover:bg-muted transition-colors"
+                  title="Manage users"
+                  aria-label="Manage users"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={logout}
+                className="p-2 rounded-md hover:bg-muted transition-colors"
+                title="Log out"
+                aria-label="Log out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-foreground/80 text-sm font-semibold">
+              {user?.displayName?.slice(0, 1)?.toUpperCase() || 'U'}
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              {isUserAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isOpen) onToggle();
+                    navigate({ to: '/admin/users' });
+                  }}
+                  className="p-2 rounded-md hover:bg-muted transition-colors"
+                  title="Manage users"
+                  aria-label="Manage users"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={logout}
+                className="p-2 rounded-md hover:bg-muted transition-colors"
+                title="Log out"
+                aria-label="Log out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
-import { KeyRound } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { FirstTimePasswordSetupSchema } from '@tensrai/shared';
+import { KeyRound } from 'lucide-react';
 import { BaseForm, FormError, FormField, LoadingButton } from '@/components/forms';
 import { useAuth } from '@/stores/auth';
 
