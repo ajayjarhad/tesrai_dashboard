@@ -1,20 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
+// import { getEnv } from '@tensrai/shared';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 
-const getEnv = (key: string, fallback?: string): string => {
-  const value = process.env[key];
-  if (value && value.length > 0) {
-    return value;
-  }
-  if (fallback !== undefined) {
-    return fallback;
-  }
-  throw new Error(`Missing environment variable ${key}`);
-};
-
-const baseUrl = getEnv('BASE_URL', 'http://localhost:5001');
-const frontendUrl = getEnv('FRONTEND_URL', 'http://localhost:5000');
+const baseUrl = process.env['BASE_URL'] || 'http://localhost:5001';
+const frontendUrl = process.env['FRONTEND_URL'] || 'http://localhost:5000';
 const nodeEnv = process.env['NODE_ENV'] ?? 'development';
 
 // We'll initialize auth with a lazy database adapter that gets the Prisma client at runtime

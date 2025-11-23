@@ -1,9 +1,6 @@
 import type { ProcessedMapData } from '@tensrai/shared';
-import Konva from 'konva';
-import { nanoid } from 'nanoid';
-import { type RefObject, useCallback, useEffect, useState } from 'react';
-
-export type LocationMode = 'idle' | 'placing' | 'editing';
+import { useEffect, useState } from 'react';
+import { createMapTransforms, worldToMapPixel } from '../../../lib/map/mapTransforms';
 
 export interface TempLocation {
   id: string;
@@ -12,130 +9,38 @@ export interface TempLocation {
   rotation: number;
 }
 
-interface UseMapLocationsProps {
-  mapData: ProcessedMapData | null;
-  mapGroupRef: RefObject<Konva.Group | null>;
-  pinRef: RefObject<Konva.Group | null>;
-  transformerRef: RefObject<Konva.Transformer | null>;
-}
-
-export function useMapLocations({
-  mapData,
-  mapGroupRef,
-  pinRef,
-  transformerRef,
-}: UseMapLocationsProps) {
+export function useMapLocations({ mapData }: { mapData: ProcessedMapData | null }) {
   const [locations, setLocations] = useState<TempLocation[]>([]);
-  const [locationMode, setLocationMode] = useState<LocationMode>('placing');
-  const [tempLocation, setTempLocation] = useState<TempLocation | null>(null);
 
-  const handleAddLocation = useCallback(() => {
-    setLocationMode('placing');
-    setTempLocation(null);
-  }, []);
-
-  const saveAndExitLocationMode = useCallback(() => {
-    if (!tempLocation || !mapData) {
-      setLocationMode('idle');
-      setTempLocation(null);
-      return;
-    }
-
-    // Get final rotation from ref if available (since transformer updates node directly)
-    let finalRotation = tempLocation.rotation;
-    if (pinRef.current) {
-      finalRotation = pinRef.current.rotation();
-    }
-
-    setLocations(prev => [...prev, { ...tempLocation, rotation: finalRotation }]);
-
-    setLocationMode('idle');
-    setTempLocation(null);
-  }, [tempLocation, mapData, pinRef]);
-
-  const handlePlacingClick = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent>) => {
-      const stage = e.target.getStage();
-      const group = mapGroupRef.current;
-      if (!stage || !group) return;
-
-      const pointerPos = group.getRelativePointerPosition();
-      if (pointerPos) {
-        setTempLocation({
-          id: nanoid(),
-          x: pointerPos.x,
-          y: pointerPos.y,
-          rotation: 0,
-        });
-        setLocationMode('editing');
-      }
-    },
-    [mapGroupRef]
-  );
-
-  const handleEditingClick = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent>) => {
-      const clickedOnPin = e.target.getParent() === pinRef.current || e.target === pinRef.current;
-      const clickedOnTransformer = e.target.getParent() instanceof Konva.Transformer;
-
-      if (!clickedOnPin && !clickedOnTransformer) {
-        saveAndExitLocationMode();
-      }
-    },
-    [pinRef, saveAndExitLocationMode]
-  );
-
-  const handleStageClick = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent>) => {
-      if (locationMode === 'placing') {
-        handlePlacingClick(e);
-      } else if (locationMode === 'editing') {
-        handleEditingClick(e);
-      }
-    },
-    [locationMode, handlePlacingClick, handleEditingClick]
-  );
-
+  // Initialize locations from map data features
   useEffect(() => {
-    const handleEditingKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        saveAndExitLocationMode();
-      } else if (e.key === 'Escape') {
-        setLocationMode('idle');
-        setTempLocation(null);
-      }
-    };
+    if (mapData?.features?.locationTags && mapData.meta) {
+      const transforms = createMapTransforms(mapData.meta);
 
-    const handlePlacingKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setLocationMode('idle');
-      }
-    };
+      setLocations(
+        mapData.features.locationTags.map(tag => {
+          const pixelPos = worldToMapPixel({ x: tag.x, y: tag.y }, transforms);
+          // Adjust rotation by subtracting map origin rotation (if any)
+          // theta is in radians, convert to degrees for Konva
+          // Konva rotation is clockwise, ROS is counter-clockwise, but mapTransforms handles coordinate system
+          // For simple pins, we just convert radians to degrees.
+          // Ideally we should also adjust for origin yaw: (tag.theta - originYaw) * (180/PI)
+          // But let's stick to the requested translation first.
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (locationMode === 'editing') {
-        handleEditingKeyDown(e);
-      } else if (locationMode === 'placing') {
-        handlePlacingKeyDown(e);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [locationMode, saveAndExitLocationMode]);
-
-  useEffect(() => {
-    if (locationMode === 'editing' && transformerRef.current && pinRef.current) {
-      transformerRef.current.nodes([pinRef.current]);
-      transformerRef.current.getLayer()?.batchDraw();
+          return {
+            id: tag.id,
+            x: pixelPos.x,
+            y: pixelPos.y,
+            rotation: tag.theta * (180 / Math.PI),
+          };
+        })
+      );
+    } else {
+      setLocations([]);
     }
-  }, [locationMode, transformerRef, pinRef]);
+  }, [mapData]);
 
   return {
     locations,
-    locationMode,
-    tempLocation,
-    handleAddLocation,
-    handleStageClick,
   };
 }

@@ -15,8 +15,7 @@ export interface UseOccupancyMapState {
 }
 
 export interface UseOccupancyMapOptions {
-  mapYamlPath: string;
-  basePath?: string;
+  mapId: string;
   cacheEnabled?: boolean;
   autoLoad?: boolean;
   // PGM optimization options
@@ -28,13 +27,12 @@ export interface UseOccupancyMapOptions {
 
 /**
  * Hook to load and manage occupancy map data
- * @param options Loading options including YAML path
+ * @param options Loading options including map ID
  * @returns Map data state and controls
  */
 export function useOccupancyMap(options: UseOccupancyMapOptions): UseOccupancyMapState {
   const {
-    mapYamlPath,
-    basePath = '',
+    mapId,
     cacheEnabled = true,
     autoLoad = true,
     useOptimizedParser,
@@ -66,8 +64,7 @@ export function useOccupancyMap(options: UseOccupancyMapOptions): UseOccupancyMa
 
     try {
       const loadOptions: any = {
-        yamlPath: mapYamlPath,
-        basePath,
+        mapId,
         cacheEnabled,
         useOptimizedParser,
         pgmQuality,
@@ -100,20 +97,12 @@ export function useOccupancyMap(options: UseOccupancyMapOptions): UseOccupancyMa
         }));
       }
     }
-  }, [
-    mapYamlPath,
-    basePath,
-    cacheEnabled,
-    useOptimizedParser,
-    pgmQuality,
-    chunkSize,
-    progressCallback,
-  ]);
+  }, [mapId, cacheEnabled, useOptimizedParser, pgmQuality, chunkSize, progressCallback]);
 
   const reload = useCallback(() => {
-    evictFromCache(mapYamlPath, basePath);
+    evictFromCache(mapId);
     loadMap();
-  }, [mapYamlPath, basePath, loadMap]);
+  }, [mapId, loadMap]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -125,12 +114,12 @@ export function useOccupancyMap(options: UseOccupancyMapOptions): UseOccupancyMa
 
   // Auto-load on mount
   useEffect(() => {
-    if (!autoLoad || !mapYamlPath) {
+    if (!autoLoad || !mapId) {
       return;
     }
 
     loadMap();
-  }, [autoLoad, mapYamlPath, loadMap]);
+  }, [autoLoad, mapId, loadMap]);
 
   return {
     data: state.data,

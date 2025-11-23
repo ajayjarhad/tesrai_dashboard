@@ -85,3 +85,43 @@ enum Role {
   ADMIN
   USER
 }
+
+model Robot {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  name        String      @unique
+  status      RobotMode   @default(UNKNOWN)
+  battery     Float?      // Battery percentage (0-100)
+  
+  // Location info
+  mapId       String?     @db.ObjectId // ID of the map the robot is on
+  map         Map?        @relation(fields: [mapId], references: [id])
+  x           Float?      // X coordinate
+  y           Float?      // Y coordinate
+  theta       Float?      // Orientation in radians
+  
+  ipAddress   String?     // For direct communication if needed
+  lastSeen    DateTime    @default(now())
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Map {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  image     Bytes    // Binary PGM data
+  metadata  Json     // YAML metadata (resolution, origin)
+  features  Json     // Location tags, missions
+  robots    Robot[]
+}
+
+enum RobotMode {
+  MISSION
+  DOCKING
+  CHARGING
+  SW_EMERGENCY
+  HW_EMERGENCY
+  TELEOP
+  HRI
+  UNKNOWN
+}

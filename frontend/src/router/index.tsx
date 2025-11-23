@@ -10,7 +10,7 @@ import { PERMISSIONS } from '@tensrai/shared';
 import { UserManagement } from '@/features/admin/components';
 import { TemporaryUserCreation } from '@/features/admin/components/temporary-user-creation';
 import { FirstTimePasswordForm, LoginForm } from '@/features/auth/components';
-import { OccupancyMap } from '@/features/robot-map/components';
+import { Dashboard } from '@/features/robot-map/components/Dashboard';
 import type { NavigationService } from '@/lib/navigation';
 import { setNavigationService } from '@/lib/navigation';
 import { useAuth, useAuthStore } from '@/stores/auth';
@@ -55,17 +55,7 @@ const indexRoute = createRoute({
       return <Navigate to="/auth/first-time-setup" replace />;
     }
 
-    return (
-      <div className="w-full h-screen relative">
-        <OccupancyMap
-          mapYamlPath="/assets/map.yaml"
-          width="100%"
-          height="100%"
-          enablePanning={true}
-          enableZooming={true}
-        />
-      </div>
-    );
+    return <Dashboard />;
   },
 });
 

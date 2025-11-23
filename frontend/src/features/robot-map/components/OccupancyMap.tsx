@@ -1,9 +1,9 @@
-import { useState } from 'react';
 import { useOccupancyMap } from '../hooks/useOccupancyMap';
 import { MapStage } from './MapStage';
 
 interface OccupancyMapProps {
-  mapYamlPath: string;
+  mapId: string;
+  onMapChange?: (mapId: string) => void;
   enablePanning?: boolean;
   enableZooming?: boolean;
   width?: string | number;
@@ -12,19 +12,15 @@ interface OccupancyMapProps {
 }
 
 export function OccupancyMap({
-  mapYamlPath: initialMapYamlPath,
+  mapId,
   enablePanning = true,
   enableZooming = true,
   width = '100%',
   height = '100%',
   className,
 }: OccupancyMapProps) {
-  const [activeMapId, setActiveMapId] = useState<'r1' | 'r2'>('r1');
-
-  const currentYamlPath = activeMapId === 'r1' ? initialMapYamlPath : 'assets/map2.yaml';
-
   const mapState = useOccupancyMap({
-    mapYamlPath: currentYamlPath,
+    mapId,
     autoLoad: true,
     useOptimizedParser: true,
   });
@@ -62,8 +58,6 @@ export function OccupancyMap({
       className={className || ''}
       enablePanning={enablePanning}
       enableZooming={enableZooming}
-      onSelectMap={setActiveMapId}
-      selectedMapId={activeMapId}
     />
   );
 }

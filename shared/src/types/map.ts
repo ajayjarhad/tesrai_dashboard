@@ -93,6 +93,20 @@ export interface ProcessedMapData {
     occupiedThresh: number;
     freeThresh: number;
   };
+  features?: {
+    locationTags: Array<{
+      id: string;
+      name: string;
+      x: number;
+      y: number;
+      theta: number;
+    }>;
+    missions: Array<{
+      id: string;
+      name: string;
+      steps: string[];
+    }>;
+  };
 }
 
 /**
