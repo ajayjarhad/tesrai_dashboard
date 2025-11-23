@@ -18,8 +18,6 @@ interface MapStageProps {
   width?: number | string;
   height?: number | string;
   className?: string;
-  onSelectMap?: (mapId: 'r1' | 'r2') => void;
-  selectedMapId?: 'r1' | 'r2';
 }
 
 export function MapStage({
@@ -29,23 +27,17 @@ export function MapStage({
   width = '100%',
   height = '100%',
   className,
-  onSelectMap,
-  selectedMapId,
 }: MapStageProps) {
   const stageRef = useRef<Konva.Stage>(null);
   const mapGroupRef = useRef<Konva.Group>(null);
   const pinRef = useRef<Konva.Group>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
-  const mapImage = useMapImage(mapData, selectedMapId || 'default');
+  const mapImage = useMapImage(mapData, 'default');
   const { ref: containerRef, size: containerSize } = useElementSize<HTMLDivElement>();
 
-  const { locations, locationMode, tempLocation, handleAddLocation, handleStageClick } =
-    useMapLocations({
-      mapData,
-      mapGroupRef,
-      pinRef,
-      transformerRef,
-    });
+  const { locations } = useMapLocations({
+    mapData,
+  });
 
   const resolvedWidth = typeof width === 'number' ? width : containerSize.width || 800;
   const resolvedHeight = typeof height === 'number' ? height : containerSize.height || 600;
@@ -102,11 +94,8 @@ export function MapStage({
           mapImage={mapImage}
           rotation={rotation}
           locations={locations}
-          tempLocation={tempLocation}
-          locationMode={locationMode}
           enablePanning={enablePanning}
           handleWheel={handleWheel}
-          handleStageClick={handleStageClick}
         />
 
         <MapOverlay
@@ -115,10 +104,6 @@ export function MapStage({
           onRotateLeft={() => rotateStage(-15)}
           onRotateRight={() => rotateStage(15)}
           onRecenter={resetView}
-          onAddLocation={handleAddLocation}
-          locationMode={locationMode}
-          onSelectMap={onSelectMap}
-          selectedMapId={selectedMapId}
         />
       </div>
     </MapErrorBoundary>

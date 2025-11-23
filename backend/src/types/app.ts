@@ -37,30 +37,27 @@ export interface AppFastifyRequest {
   audit?: AppFastifyInstance['audit'];
 }
 
-export interface AppFastifyInstance {
-  register: (...args: any[]) => Promise<unknown> | undefined;
-  get: (...args: any[]) => void;
-  post: (...args: any[]) => void;
-  put: (...args: any[]) => void;
-  delete: (...args: any[]) => void;
-  all: (...args: any[]) => void;
-  options: (...args: any[]) => void;
-  route: (...args: any[]) => void;
-  setErrorHandler: (...args: any[]) => void;
-  setNotFoundHandler: (...args: any[]) => void;
-  listen: (options: { port: number; host: string }) => Promise<void>;
-  close: () => Promise<void>;
-  decorate: (name: string, value: unknown) => void;
-  decorateRequest: (name: string, value: unknown) => void;
-  addHook: (name: string, handler: (...args: any[]) => unknown) => void;
-  log: {
-    info: (...args: unknown[]) => void;
-    error: (...args: unknown[]) => void;
-    warn: (...args: unknown[]) => void;
-    debug: (...args: unknown[]) => void;
-    level?: string;
-  };
+import type { FastifyInstance } from 'fastify';
+
+export type AppFastifyInstance = FastifyInstance & {
   prisma: PrismaClient;
   auth: Auth;
   audit(event: AuditEvent): Promise<void>;
-}
+  register: <T = any>(...args: any[]) => T;
+  get: <T = any>(...args: any[]) => T;
+  post: <T = any>(...args: any[]) => T;
+  put: <T = any>(...args: any[]) => T;
+  patch: <T = any>(...args: any[]) => T;
+  delete: <T = any>(...args: any[]) => T;
+  all: <T = any>(...args: any[]) => T;
+  options: <T = any>(...args: any[]) => T;
+  route: <T = any>(...args: any[]) => T;
+  setErrorHandler: (...args: any[]) => any;
+  setNotFoundHandler: (...args: any[]) => any;
+  listen: (...args: any[]) => any;
+  close: () => Promise<void>;
+  decorate: (...args: any[]) => any;
+  decorateRequest: (...args: any[]) => any;
+  addHook: (...args: any[]) => any;
+  log: any;
+};

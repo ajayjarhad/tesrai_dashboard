@@ -1,8 +1,9 @@
+import { getEnv } from '@tensrai/shared';
 import type { Options } from 'ky';
 import ky, { HTTPError } from 'ky';
 
 export const api = ky.create({
-  prefixUrl: `${import.meta.env['VITE_API_URL'] || 'http://localhost:5001'}/api`,
+  prefixUrl: `${getEnv('VITE_API_URL', 'http://localhost:5001')}/api`,
   credentials: 'include',
   timeout: 10000,
   headers: {

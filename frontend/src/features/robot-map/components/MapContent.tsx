@@ -1,8 +1,8 @@
 import type { ProcessedMapData } from '@tensrai/shared';
 import type Konva from 'konva';
 import type { RefObject } from 'react';
-import { Group, Image as KonvaImage, Layer, Stage, Transformer } from 'react-konva';
-import type { LocationMode, TempLocation } from '../hooks/useMapLocations';
+import { Group, Image as KonvaImage, Layer, Stage } from 'react-konva';
+import type { TempLocation } from '../hooks/useMapLocations';
 import { LocationPin } from './LocationPin';
 
 interface MapContentProps {
@@ -16,29 +16,21 @@ interface MapContentProps {
   mapImage: HTMLImageElement | ImageBitmap | HTMLCanvasElement | undefined;
   rotation: number;
   locations: TempLocation[];
-  tempLocation: TempLocation | null;
-  locationMode: LocationMode;
   enablePanning: boolean;
   handleWheel: (e: Konva.KonvaEventObject<WheelEvent>) => void;
-  handleStageClick: (e: Konva.KonvaEventObject<MouseEvent>) => void;
 }
 
 export function MapContent({
   stageRef,
   mapGroupRef,
-  pinRef,
-  transformerRef,
   width,
   height,
   mapData,
   mapImage,
   rotation,
   locations,
-  tempLocation,
-  locationMode,
   enablePanning,
   handleWheel,
-  handleStageClick,
 }: MapContentProps) {
   const { width: mapWidth, height: mapHeight } = mapData.meta;
 
@@ -47,10 +39,8 @@ export function MapContent({
       ref={stageRef}
       width={width}
       height={height}
-      draggable={enablePanning && locationMode === 'idle'}
+      draggable={enablePanning}
       onWheel={handleWheel}
-      onClick={handleStageClick}
-      onTap={handleStageClick}
     >
       <Layer>
         <Group
@@ -66,26 +56,6 @@ export function MapContent({
           {locations.map(loc => (
             <LocationPin key={loc.id} x={loc.x} y={loc.y} rotation={loc.rotation} />
           ))}
-
-          {tempLocation && (
-            <>
-              <LocationPin
-                ref={pinRef}
-                x={tempLocation.x}
-                y={tempLocation.y}
-                rotation={tempLocation.rotation}
-              />
-              {locationMode === 'editing' && (
-                <Transformer
-                  ref={transformerRef}
-                  resizeEnabled={false}
-                  rotateEnabled={true}
-                  enabledAnchors={[]}
-                  rotateAnchorOffset={20}
-                />
-              )}
-            </>
-          )}
         </Group>
       </Layer>
     </Stage>

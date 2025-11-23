@@ -99,14 +99,15 @@ const securityPlugin = async (fastify: AppFastifyInstance) => {
 
   // Rate limiting temporarily disabled for local development
 
-  fastify.addHook('onSend', async (request: AppFastifyRequest, reply: AppFastifyReply) => {
-    const origin = request.headers.origin;
+  fastify.addHook('onSend', async (_requestt: AppFastifyRequest, reply: AppFastifyReply) => {
+    // const _originn = request.headers.origin;
 
-    if (origin && isAllowedOrigin(origin)) {
-      reply.header('Access-Control-Allow-Origin', origin);
-      reply.header('Vary', 'Origin');
-      reply.header('Access-Control-Allow-Credentials', 'true');
-    }
+    // CORS headers are handled by @fastify/cors
+    // if (origin && isAllowedOrigin(origin)) {
+    //   reply.header('Access-Control-Allow-Origin', origin);
+    //   reply.header('Vary', 'Origin');
+    //   reply.header('Access-Control-Allow-Credentials', 'true');
+    // }
 
     reply.header('Server', 'TensraiDashboard');
 

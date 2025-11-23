@@ -4,3 +4,4 @@ export * from './types/audit';
 export * from './types/auth';
 export * from './types/map';
 export * from './types/user';
+export * from './utils/env';
