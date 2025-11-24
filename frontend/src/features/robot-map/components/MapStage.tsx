@@ -6,6 +6,7 @@ import { useMapControls } from '../hooks/useMapControls';
 import { useMapFitting } from '../hooks/useMapFitting';
 import { useMapImage } from '../hooks/useMapImage';
 import { useMapLocations } from '../hooks/useMapLocations';
+import { useRobots } from '../hooks/useRobots';
 import { useZoom } from '../hooks/useZoom';
 import { MapContent } from './MapContent';
 import { MapErrorBoundary } from './MapErrorBoundary';
@@ -38,6 +39,8 @@ export function MapStage({
   const { locations } = useMapLocations({
     mapData,
   });
+
+  const { data: robots = [] } = useRobots();
 
   const resolvedWidth = typeof width === 'number' ? width : containerSize.width || 800;
   const resolvedHeight = typeof height === 'number' ? height : containerSize.height || 600;
@@ -94,6 +97,7 @@ export function MapStage({
           mapImage={mapImage}
           rotation={rotation}
           locations={locations}
+          robots={robots}
           enablePanning={enablePanning}
           handleWheel={handleWheel}
         />
