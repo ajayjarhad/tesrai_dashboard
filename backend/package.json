@@ -11,6 +11,7 @@
     "generate": "prisma generate",
     "seed": "tsx scripts/seed.ts",
     "seed:robots": "tsx scripts/robotSeed.ts",
+    "seed:maps": "tsx scripts/seedMaps.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format .",
