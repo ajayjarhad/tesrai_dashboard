@@ -9,7 +9,6 @@ async function main() {
     {
       name: 'Tensrai1',
       status: 'MISSION',
-      mapId: 'r1',
       x: 10,
       y: 10,
       theta: 0,
@@ -18,7 +17,6 @@ async function main() {
     {
       name: 'Tensrai2',
       status: 'MISSION',
-      mapId: 'r2',
       x: 15,
       y: 15,
       theta: 1.57,
