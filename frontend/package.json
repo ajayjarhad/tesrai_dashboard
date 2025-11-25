@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port 5000",
+    "dev": "vite --port 5002",
     "build": "tsc -b && vite build",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
@@ -37,6 +37,7 @@
     "react-konva": "^19.2.0",
     "tailwind-merge": "^2.2.0",
     "tailwindcss-animate": "^1.0.7",
+    "sonner": "^1.5.0",
     "zod": "^4.1.12",
     "zustand": "^5.0.8"
   },
