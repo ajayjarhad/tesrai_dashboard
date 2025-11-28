@@ -14,13 +14,17 @@ export const queryClient = new QueryClient({
         }
         return failureCount < 2;
       },
-      staleTime: 5 * 60 * 1000,
-      gcTime: 10 * 60 * 1000,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,
+      // Add default error handling
+      throwOnError: false,
     },
     mutations: {
       retry: 1,
+      // Default mutation settings
+      throwOnError: true,
     },
   },
 });

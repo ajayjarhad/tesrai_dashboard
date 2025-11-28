@@ -1,89 +1,37 @@
 import { useNavigate } from '@tanstack/react-router';
-import type { User } from '@tensrai/shared';
-import { ArrowLeft, ShieldCheck, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
-import { apiClient } from '@/lib/api';
+import { ArrowLeft, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/stores/auth';
+import { useDeleteUser, useUpdateUser, useUsers } from '../hooks';
+import { UserRow } from './UserRow';
 
 export function UserManagement() {
-  const { user: currentUser, session } = useAuth();
-  const sessionToken = session?.sessionId;
-  const authHeaders = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : undefined;
+  const { user: currentUser } = useAuth();
   const navigate = useNavigate();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadUsers = useCallback(async () => {
-    if (!sessionToken) {
-      setError('Authentication required. Please sign in again.');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await apiClient.get<{ success: boolean; data: User[]; message?: string }>(
-        'users',
-        authHeaders ? { headers: authHeaders } : undefined
-      );
-      if (response.success && Array.isArray(response.data)) {
-        setUsers(response.data);
-        setError(null);
-      } else {
-        setError(response.message || 'Failed to load users');
-      }
-    } catch (err) {
-      setError('Failed to load users');
-      console.error('Error loading users:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionToken, authHeaders]);
-
-  useEffect(() => {
-    if (!sessionToken) {
-      setLoading(false);
-      setError('Authentication required. Please sign in again.');
-      return;
-    }
-
-    loadUsers();
-  }, [loadUsers, sessionToken]);
+  const { data: users = [], isLoading, error } = useUsers();
+  const deleteUserMutation = useDeleteUser();
+  const updateUserMutation = useUpdateUser();
 
   const handleDeleteUser = async (userId: string) => {
-    if (!sessionToken) {
-      setError('Authentication required. Please sign in again.');
-      return;
-    }
-
     if (!confirm('Are you sure you want to delete this user?')) return;
 
     try {
-      await apiClient.delete(`users/${userId}`, authHeaders ? { headers: authHeaders } : undefined);
-      await loadUsers();
+      await deleteUserMutation.mutateAsync(userId);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete user';
-      setError(errorMessage);
+      console.error(errorMessage);
     }
   };
 
   const handleToggleUserStatus = async (userId: string, isActive: boolean) => {
-    if (!sessionToken) {
-      setError('Authentication required. Please sign in again.');
-      return;
-    }
-
     try {
-      await apiClient.put(
-        `users/${userId}`,
-        { isActive },
-        authHeaders ? { headers: authHeaders } : undefined
-      );
-      await loadUsers();
+      await updateUserMutation.mutateAsync({
+        userId,
+        userData: { isActive } as any, // Type assertion due to mismatch between UpdateUserRequest and Partial<User>
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update user';
-      setError(errorMessage);
+      console.error(errorMessage);
     }
   };
 
@@ -110,21 +58,16 @@ export function UserManagement() {
         </div>
         <h1 className="text-3xl font-bold text-foreground">User Management</h1>
 
-        {error && (
+        {(error || deleteUserMutation.error || updateUserMutation.error) && (
           <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded mb-4">
-            {error}
-            <button
-              type="button"
-              onClick={() => setError(null)}
-              className="ml-2 text-destructive hover:text-destructive/80"
-            >
-              ×
-            </button>
+            {error?.message ||
+              deleteUserMutation.error?.message ||
+              updateUserMutation.error?.message}
           </div>
         )}
 
         <div className="bg-card shadow overflow-hidden sm:rounded-md">
-          {loading ? (
+          {isLoading ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
@@ -153,55 +96,15 @@ export function UserManagement() {
               </thead>
               <tbody className="bg-background divide-y divide-border">
                 {users.map(user => (
-                  <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-foreground">
-                          {user.displayName || user.username}
-                        </div>
-                        <div className="text-sm text-muted-foreground">{user.email}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          user.role === 'ADMIN'
-                            ? 'bg-accent text-accent-foreground'
-                            : 'bg-secondary text-secondary-foreground'
-                        }`}
-                      >
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleUserStatus(user.id, !user.isActive)}
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full cursor-pointer focus-ring ${
-                          user.isActive
-                            ? 'bg-card text-foreground hover:bg-accent'
-                            : 'bg-muted text-muted-foreground hover:bg-accent'
-                        }`}
-                      >
-                        {user.isActive ? 'Active' : 'Inactive'}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      {user.id !== currentUser?.id && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="text-destructive hover:text-destructive/80 focus-ring inline-flex items-center gap-1"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          Delete
-                        </button>
-                      )}
-                    </td>
-                  </tr>
+                  <UserRow
+                    key={user.id}
+                    user={user}
+                    currentUser={currentUser}
+                    onDelete={handleDeleteUser}
+                    onToggleStatus={handleToggleUserStatus}
+                    deleteUserMutation={deleteUserMutation}
+                    updateUserMutation={updateUserMutation}
+                  />
                 ))}
               </tbody>
             </table>

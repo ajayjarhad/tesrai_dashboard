@@ -28,7 +28,7 @@ export function Dashboard() {
   const { missions: prioritizedMissions } = useRobotMissions(robots, activeMapId);
   const robotsOnActiveMap = useMapRobots(robots, activeMapId);
 
-  const [mapFeatures, setMapFeatures] = useState<ProcessedMapData['features'] | undefined>();
+  const [_mapFeatures, setMapFeatures] = useState<ProcessedMapData['features'] | undefined>();
   const [isSettingPose, setIsSettingPose] = useState(false);
   const [teleopRobotId, setTeleopRobotId] = useState<string | null>(null);
 
@@ -143,7 +143,6 @@ export function Dashboard() {
           isOpen={isSidebarOpen}
           onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
           missions={prioritizedMissions}
-          locationTags={mapFeatures?.locationTags ?? []}
           className="flex-shrink-0 border-l border-border bg-card z-10 shadow-xl"
           onManualControl={() => {
             if (!selectedRobotId) {

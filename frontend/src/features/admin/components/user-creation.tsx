@@ -1,13 +1,13 @@
 import { useNavigate } from '@tanstack/react-router';
 import { PERMISSIONS } from '@tensrai/shared';
-import { ArrowLeft, Copy, Download, RefreshCcw, Sparkles, UserPlus, X } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, Copy, Download, RefreshCcw, UserPlus, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { BaseForm, FormError, FormField, LoadingButton } from '@/components/forms';
-import { apiClient } from '@/lib/api';
 import { copyToClipboard, downloadCredentials } from '../../../lib/credentials-download';
-import { generateTemporaryPassword } from '../../../lib/password-generator';
 import { useAuth } from '../../../stores/auth';
+import type { CreateUserRequest } from '../api/createUser';
+import { useCreateUser } from '../hooks';
 
 const userFormSchema = z.object({
   username: z
@@ -28,16 +28,27 @@ interface CreatedUser {
   password: string;
 }
 
-export function TemporaryUserCreation() {
+export function UserCreation() {
   const navigate = useNavigate();
-  const { hasPermission, session } = useAuth();
-  const sessionToken = session?.sessionId;
-  const authHeaders = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : undefined;
-  const [isCreating, setIsCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { hasPermission } = useAuth();
+  const createUserMutation = useCreateUser();
   const [createdUser, setCreatedUser] = useState<CreatedUser | null>(null);
-  const [generatedPassword, setGeneratedPassword] = useState('');
-  const [copied, setCopied] = useState(false);
+
+  // Handle mutation success
+  useEffect(() => {
+    if (createUserMutation.isSuccess && createUserMutation.data) {
+      const result = createUserMutation.data;
+      if (result.success) {
+        const newUser: CreatedUser = {
+          username: result.data.user.username,
+          email: result.data.user.email,
+          displayName: result.data.user.displayName || '',
+          password: result.data.tempPassword,
+        };
+        setCreatedUser(newUser);
+      }
+    }
+  }, [createUserMutation.isSuccess, createUserMutation.data]);
 
   // Check if user has permission
   if (!hasPermission(PERMISSIONS.USER_MANAGEMENT)) {
@@ -51,22 +62,6 @@ export function TemporaryUserCreation() {
     );
   }
 
-  const generatePassword = () => {
-    const password = generateTemporaryPassword();
-    setGeneratedPassword(password);
-    setCopied(false);
-  };
-
-  const copyPassword = async () => {
-    if (generatedPassword) {
-      const success = await copyToClipboard(generatedPassword);
-      if (success) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 3000);
-      }
-    }
-  };
-
   const downloadUserCredentials = () => {
     if (createdUser) {
       downloadCredentials({
@@ -79,52 +74,12 @@ export function TemporaryUserCreation() {
   };
 
   const onSubmit = async (data: UserFormData) => {
-    if (!generatedPassword) {
-      setError('Please generate a password first');
-      return;
-    }
-
-    if (!sessionToken) {
-      setError('Authentication required. Please sign in again.');
-      return;
-    }
-
-    setIsCreating(true);
-    setError(null);
-
-    try {
-      const response = await apiClient.post<any>(
-        'users',
-        {
-          ...data,
-          tempPassword: generatedPassword,
-        },
-        authHeaders ? { headers: authHeaders } : undefined
-      );
-
-      if (response.success) {
-        const newUser: CreatedUser = {
-          username: response.data.user.username,
-          email: response.data.user.email,
-          displayName: response.data.user.displayName || '',
-          password: response.data.tempPassword,
-        };
-        setCreatedUser(newUser);
-      } else {
-        setError(response.error || 'Failed to create user');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create user');
-    } finally {
-      setIsCreating(false);
-    }
+    createUserMutation.mutate(data as CreateUserRequest);
   };
 
   const resetForm = () => {
     setCreatedUser(null);
-    setGeneratedPassword('');
-    setError(null);
-    setCopied(false);
+    createUserMutation.reset();
   };
 
   const goBack = () => {
@@ -168,7 +123,7 @@ export function TemporaryUserCreation() {
               </div>
 
               <div className="border-t border-border pt-4 space-y-3">
-                <h3 className="text-lg font-semibold text-foreground mb-2">Temporary Password</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Password</h3>
                 <div className="bg-secondary rounded-md p-3">
                   <div className="flex items-center justify-between">
                     <code className="text-lg font-mono text-foreground">
@@ -243,9 +198,9 @@ export function TemporaryUserCreation() {
             <ArrowLeft className="h-4 w-4" />
             Back to User Management
           </button>
-          <h1 className="text-3xl font-bold text-foreground">Create Temporary User</h1>
+          <h1 className="text-3xl font-bold text-foreground">Create User</h1>
           <p className="mt-2 text-muted-foreground">
-            Create a new user with a temporary password that expires in 72 hours.
+            Create a new user with an auto-generated password that expires in 72 hours.
           </p>
         </div>
 
@@ -263,7 +218,7 @@ export function TemporaryUserCreation() {
           >
             {({ formState }) => (
               <>
-                <FormError errors={error} />
+                <FormError errors={createUserMutation.error?.message} />
 
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <FormField
@@ -272,7 +227,7 @@ export function TemporaryUserCreation() {
                     inputProps={{
                       type: 'text',
                       placeholder: 'Enter username',
-                      disabled: isCreating,
+                      disabled: createUserMutation.isPending,
                     }}
                   />
 
@@ -282,7 +237,7 @@ export function TemporaryUserCreation() {
                     inputProps={{
                       type: 'email',
                       placeholder: 'Enter email address',
-                      disabled: isCreating,
+                      disabled: createUserMutation.isPending,
                     }}
                   />
 
@@ -292,7 +247,7 @@ export function TemporaryUserCreation() {
                     inputProps={{
                       type: 'text',
                       placeholder: 'Enter display name',
-                      disabled: isCreating,
+                      disabled: createUserMutation.isPending,
                     }}
                   />
 
@@ -301,7 +256,7 @@ export function TemporaryUserCreation() {
                       <select
                         value={value}
                         onChange={e => onChange(e.target.value)}
-                        disabled={disabled || isCreating}
+                        disabled={disabled || createUserMutation.isPending}
                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <option value="USER">User</option>
@@ -311,73 +266,20 @@ export function TemporaryUserCreation() {
                   </FormField>
                 </div>
 
-                <div className="border-t border-border pt-6">
-                  <h3 className="text-lg font-medium text-foreground mb-4">Password Generation</h3>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-4">
-                      <button
-                        type="button"
-                        onClick={generatePassword}
-                        disabled={isCreating}
-                        className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90 disabled:opacity-50 inline-flex items-center gap-2"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        Generate Password
-                      </button>
-
-                      {generatedPassword && (
-                        <div className="flex items-center space-x-2 flex-1">
-                          <span className="text-sm text-muted-foreground">Generated:</span>
-                          <code className="bg-secondary px-3 py-1 rounded text-foreground">
-                            {generatedPassword}
-                          </code>
-                          <button
-                            type="button"
-                            onClick={copyPassword}
-                            className="px-3 py-1 bg-primary text-primary-foreground rounded text-sm hover:bg-primary/90 inline-flex items-center gap-2"
-                          >
-                            <Copy className="h-4 w-4" />
-                            {copied ? 'Copied!' : 'Copy'}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {!generatedPassword && (
-                      <p className="text-sm text-muted-foreground">
-                        Click "Generate Password" to create an 8-character temporary password
-                      </p>
-                    )}
-
-                    {generatedPassword && (
-                      <div className="bg-secondary/50 p-3 rounded-md">
-                        <p className="text-sm text-foreground">
-                          <span className="font-medium">Password:</span> {generatedPassword}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          This password will expire in 72 hours and the user will be required to
-                          change it on first login.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
                 <div className="flex justify-end space-x-4 pt-6 border-t border-border">
                   <button
                     type="button"
                     onClick={goBack}
-                    disabled={isCreating}
+                    disabled={createUserMutation.isPending}
                     className="px-4 py-2 text-muted-foreground hover:text-foreground disabled:opacity-50 inline-flex items-center gap-2"
                   >
                     <X className="h-4 w-4" />
                     Cancel
                   </button>
                   <LoadingButton
-                    loading={isCreating || formState.isSubmitting}
+                    loading={createUserMutation.isPending || formState.isSubmitting}
                     loadingText="Creating User..."
-                    disabled={!formState.isValid || !generatedPassword}
+                    disabled={!formState.isValid}
                     className="px-6 py-2 inline-flex items-center gap-2"
                   >
                     <UserPlus className="h-4 w-4" />

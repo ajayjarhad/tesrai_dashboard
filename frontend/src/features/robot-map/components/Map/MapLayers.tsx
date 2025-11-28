@@ -136,26 +136,34 @@ export function MapLayers({
     );
 
     if (setPoseMode) {
-      if (clickedRobot) return;
-      if (clickedLocation) {
-        return;
-      }
+      handleSetPoseModeClick(clickedRobot, clickedLocation);
+    } else {
+      handleNormalModeClick(clickedRobot, clickedLocation);
+    }
+  };
 
-      if (!pendingPose) {
-        placeManualPose();
-        return;
-      }
+  const handleSetPoseModeClick = (
+    clickedRobot: Konva.Node | null,
+    clickedLocation: Konva.Node | null
+  ) => {
+    if (clickedRobot || clickedLocation) return;
 
-      if (pendingPose.source === 'manual' && !pendingPose.showConfirm) {
-        setPendingPose(prev =>
-          prev && prev.source === 'manual' ? { ...prev, showConfirm: true } : prev
-        );
-        return;
-      }
-
+    if (!pendingPose) {
+      placeManualPose();
       return;
     }
 
+    if (pendingPose.source === 'manual' && !pendingPose.showConfirm) {
+      setPendingPose(prev =>
+        prev && prev.source === 'manual' ? { ...prev, showConfirm: true } : prev
+      );
+    }
+  };
+
+  const handleNormalModeClick = (
+    clickedRobot: Konva.Node | null,
+    clickedLocation: Konva.Node | null
+  ) => {
     if (!clickedRobot && !clickedLocation) {
       onRobotSelect?.(null);
       setSelectedLocationId(null);
