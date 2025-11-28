@@ -7,7 +7,7 @@ import { useAuth } from '@/stores/auth';
 
 export function UserManagement() {
   const { user: currentUser, session } = useAuth();
-  const sessionToken = session?.sessionToken || session?.token;
+  const sessionToken = session?.sessionId;
   const authHeaders = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : undefined;
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
@@ -39,7 +39,7 @@ export function UserManagement() {
     } finally {
       setLoading(false);
     }
-  }, [sessionToken]);
+  }, [sessionToken, authHeaders]);
 
   useEffect(() => {
     if (!sessionToken) {

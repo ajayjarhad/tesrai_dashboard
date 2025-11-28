@@ -1,21 +1,20 @@
 import type { ProcessedMapData } from '@tensrai/shared';
 import type Konva from 'konva';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createMapTransforms } from '@/lib/map/mapTransforms';
+import { laserToPixelPoints, pathToPixelPoints } from '@/lib/map/telemetryTransforms';
+import type { Robot } from '@/types/robot';
+import type { LaserScan, PathMessage, Pose2D } from '@/types/telemetry';
 import { useElementSize } from '../../../hooks/useElementSize';
 import { useMapControls } from '../hooks/useMapControls';
 import { useMapFitting } from '../hooks/useMapFitting';
 import { useMapImage } from '../hooks/useMapImage';
 import { useMapLocations } from '../hooks/useMapLocations';
-import { useZoom } from '../hooks/useZoom';
-import { createMapTransforms } from '@/lib/map/mapTransforms';
-import type { Robot } from '@/types/robot';
-import type { LaserScan, PathMessage, Pose2D } from '@/types/telemetry';
-import { laserToPixelPoints, pathToPixelPoints } from '@/lib/map/telemetryTransforms';
 import { useRobots } from '../hooks/useRobots';
-import { MapContent } from './MapContent';
+import { useZoom } from '../hooks/useZoom';
+import { MapLayers } from './Map/MapLayers';
 import { MapErrorBoundary } from './MapErrorBoundary';
 import { MapOverlay } from './MapOverlay';
-import { useState } from 'react';
 
 interface MapStageProps {
   mapData: ProcessedMapData | null;
@@ -31,8 +30,8 @@ interface MapStageProps {
     | {
         pose?: Pose2D;
         laser?: LaserScan;
-      path?: PathMessage;
-    }
+        path?: PathMessage;
+      }
     | null
     | undefined;
   onRobotSelect?: ((robotId: string | null) => void) | undefined;
@@ -43,7 +42,7 @@ interface MapStageProps {
 
 export function MapStage({
   mapData,
-  enablePanning = true,
+  // enablePanning = true,
   enableZooming = true,
   width = '100%',
   height = '100%',
@@ -59,8 +58,6 @@ export function MapStage({
 }: MapStageProps) {
   const stageRef = useRef<Konva.Stage>(null);
   const mapGroupRef = useRef<Konva.Group>(null);
-  const pinRef = useRef<Konva.Group>(null);
-  const transformerRef = useRef<Konva.Transformer>(null);
   const mapImage = useMapImage(mapData, 'default');
   const { ref: containerRef, size: containerSize } = useElementSize<HTMLDivElement>();
   const [stageScale, setStageScale] = useState(1);
@@ -94,7 +91,7 @@ export function MapStage({
     onScaleChange: setStageScale,
   });
 
-  const handleWheel = useZoom({
+  useZoom({
     enableZooming,
     onZoom: scale => setStageScale(scale),
   });
@@ -131,9 +128,7 @@ export function MapStage({
       : [];
 
   const pathPoints =
-    transforms && telemetry?.path
-      ? pathToPixelPoints(telemetry.path, transforms)
-      : [];
+    transforms && telemetry?.path ? pathToPixelPoints(telemetry.path, transforms) : [];
 
   if (!mapData) {
     return (
@@ -149,28 +144,22 @@ export function MapStage({
   return (
     <MapErrorBoundary>
       <div ref={containerRef} className={`relative ${className || ''}`} style={containerStyle}>
-        <MapContent
+        <MapLayers
           stageRef={stageRef}
           mapGroupRef={mapGroupRef}
-          pinRef={pinRef}
-          transformerRef={transformerRef}
-          width={resolvedWidth}
-          height={resolvedHeight}
           mapData={mapData}
           mapImage={mapImage}
           rotation={rotation}
           locations={locations}
           robots={robots}
-          enablePanning={enablePanning}
-          handleWheel={handleWheel}
           laserPoints={laserPoints}
           pathPoints={pathPoints}
           onRobotSelect={onRobotSelect}
           stageScale={stageScale}
-          selectedRobotId={selectedRobotId}
-          setPoseMode={setPoseMode}
-          onPoseConfirm={onPoseConfirm}
-          onPoseCancel={onPoseCancel}
+          selectedRobotId={selectedRobotId ?? null}
+          setPoseMode={setPoseMode ?? false}
+          onPoseConfirm={onPoseConfirm ?? (() => {})}
+          onPoseCancel={onPoseCancel ?? (() => {})}
         />
 
         <MapOverlay

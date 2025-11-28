@@ -1,5 +1,5 @@
-import { Circle, Group } from 'react-konva';
 import type { PixelPoint } from '@tensrai/shared';
+import { Circle, Group } from 'react-konva';
 
 interface LaserLayerProps {
   points: PixelPoint[];
@@ -24,7 +24,7 @@ export function LaserLayer({ points, scale = 1 }: LaserLayerProps) {
     <Group listening={false}>
       {points.map((p, idx) => (
         <Circle
-          key={`laser-${idx}`}
+          key={`laser-${p.x}-${p.y}-${idx}`}
           x={p.x}
           y={p.y}
           radius={radius}

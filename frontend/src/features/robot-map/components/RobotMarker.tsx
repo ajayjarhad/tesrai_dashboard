@@ -13,15 +13,7 @@ interface RobotMarkerProps {
 }
 
 export const RobotMarker = React.memo(
-  ({
-    x,
-    y,
-    rotation,
-    status,
-    widthMeters,
-    lengthMeters,
-    resolution,
-  }: RobotMarkerProps) => {
+  ({ x, y, rotation, status, widthMeters, lengthMeters, resolution }: RobotMarkerProps) => {
     // Calculate pixel dimensions
     const widthPixels = widthMeters / resolution;
     const lengthPixels = lengthMeters / resolution;
@@ -45,14 +37,14 @@ export const RobotMarker = React.memo(
           width={widthPixels}
           height={lengthPixels}
           stroke="black"
-        strokeWidth={widthPixels * 0.1} // Proportional stroke width
-        cornerRadius={widthPixels * 0.2} // Proportional corner radius
-        fill="#828282" // Brand grey fill
-        shadowColor="black"
-        shadowBlur={5}
-        shadowOpacity={0.3}
-        shadowOffset={{ x: 2, y: 2 }}
-      />
+          strokeWidth={widthPixels * 0.1} // Proportional stroke width
+          cornerRadius={widthPixels * 0.2} // Proportional corner radius
+          fill="#828282" // Brand grey fill
+          shadowColor="black"
+          shadowBlur={5}
+          shadowOpacity={0.3}
+          shadowOffset={{ x: 2, y: 2 }}
+        />
 
         {/* Direction Indicator (Triangle) */}
         <RegularPolygon

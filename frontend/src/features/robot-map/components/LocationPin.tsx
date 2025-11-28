@@ -27,7 +27,7 @@ export const LocationPin = forwardRef<Konva.Group, LocationPinProps>(
         rotation={rotation}
         scaleX={scale}
         scaleY={scale}
-        name={name}
+        name={name || ''}
         {...(onClick ? { onClick } : {})}
         {...(onTap ? { onTap } : {})}
       >

@@ -1,9 +1,9 @@
+import type { ProcessedMapData } from '@tensrai/shared';
 import { useEffect } from 'react';
+import type { Robot } from '@/types/robot';
+import type { LaserScan, PathMessage, Pose2D } from '@/types/telemetry';
 import { useOccupancyMap } from '../hooks/useOccupancyMap';
 import { MapStage } from './MapStage';
-import type { Robot } from '@/types/robot';
-import type { PathMessage, Pose2D, LaserScan } from '@/types/telemetry';
-import type { ProcessedMapData } from '@tensrai/shared';
 
 interface OccupancyMapProps {
   mapId: string;
@@ -20,8 +20,8 @@ interface OccupancyMapProps {
     | {
         pose?: Pose2D;
         laser?: LaserScan;
-      path?: PathMessage;
-    }
+        path?: PathMessage;
+      }
     | null
     | undefined;
   onRobotSelect?: ((robotId: string | null) => void) | undefined;
@@ -109,12 +109,12 @@ export function OccupancyMap({
         enableZooming={enableZooming}
         robots={robots}
         telemetryRobotId={telemetryRobotId ?? undefined}
-        selectedRobotId={selectedRobotId ?? undefined}
+        selectedRobotId={selectedRobotId ?? null}
         telemetry={telemetry}
         onRobotSelect={onRobotSelect}
-        setPoseMode={setPoseMode}
-        onPoseConfirm={onPoseConfirm}
-        onPoseCancel={onPoseCancel}
+        setPoseMode={setPoseMode ?? false}
+        onPoseConfirm={onPoseConfirm || (() => {})}
+        onPoseCancel={onPoseCancel || (() => {})}
       />
 
       {mapState.loading && (

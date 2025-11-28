@@ -4,8 +4,8 @@ import databasePlugin from './plugins/database.js';
 import observabilityPlugin from './plugins/observability.js';
 import securityPlugin from './plugins/security.js';
 import mapRoutes from './routes/maps.js';
-import rosGateway from './routes/rosGateway.js';
 import robotRoutes from './routes/robots.js';
+import rosGateway from './routes/rosGateway.js';
 import userRoutes from './routes/users.js';
 // Temporarily disabled OpenTelemetry
 // import { shutdownTelemetry } from './lib/telemetry.js';
