@@ -26,6 +26,11 @@ export function Dashboard() {
   const [isSettingPose, setIsSettingPose] = useState(false);
   const [teleopRobotId, setTeleopRobotId] = useState<string | null>(null);
 
+  const robotsOnActiveMap = useMemo(
+    () => robots.filter(r => !activeMapId || r.mapId === activeMapId),
+    [robots, activeMapId]
+  );
+
   // Keep all robot telemetry sockets connected so data flows regardless of selection.
   useEffect(() => {
     const ids = robots.map(r => r.id);
@@ -172,14 +177,14 @@ export function Dashboard() {
                 onMapChange={setActiveMapId}
                 width="100%"
                 height="100%"
-                enablePanning={true}
-                enableZooming={true}
-                robots={robots.map(robot => {
-                  if (
-                    robot.id === activeRobotId &&
-                    telemetry?.pose &&
-                    Number.isFinite(telemetry.pose.x) &&
-                    Number.isFinite(telemetry.pose.y) &&
+              enablePanning={true}
+              enableZooming={true}
+              robots={robotsOnActiveMap.map(robot => {
+                if (
+                  robot.id === activeRobotId &&
+                  telemetry?.pose &&
+                  Number.isFinite(telemetry.pose.x) &&
+                  Number.isFinite(telemetry.pose.y) &&
                     Number.isFinite(telemetry.pose.theta)
                   ) {
                     return {
@@ -193,11 +198,11 @@ export function Dashboard() {
                 })}
                 telemetryRobotId={activeRobotId}
                 telemetry={telemetry}
-                selectedRobotId={selectedRobotId}
-                onRobotSelect={id => {
-                  const robot = id ? robots.find(ro => ro.id === id) ?? null : null;
-                  handleSelectRobot(robot);
-                }}
+              selectedRobotId={selectedRobotId}
+              onRobotSelect={id => {
+                const robot = id ? robotsOnActiveMap.find(ro => ro.id === id) ?? null : null;
+                handleSelectRobot(robot);
+              }}
                 onMapFeaturesChange={setMapFeatures}
                 setPoseMode={isSettingPose}
                 onPoseConfirm={handlePoseComplete}
