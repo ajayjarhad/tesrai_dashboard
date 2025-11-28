@@ -1,26 +1,13 @@
-import { useNavigate } from '@tanstack/react-router';
-import type { ProcessedMapData } from '@tensrai/shared';
-import {
-  Battery,
-  ChevronLeft,
-  ChevronRight,
-  Cpu,
-  Gamepad2,
-  LocateFixed,
-  LogOut,
-  MapPin,
-  MoreVertical,
-  Pause,
-  Play,
-  Users,
-  XCircle,
-} from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/stores/auth';
 import { cn } from '../../../lib/utils';
 import type { Robot } from '../../../types/robot';
 import { MissionDialog, type MissionWithContext } from './MissionDialog';
+import { AdminMenu } from './Sidebar/AdminMenu';
+import { MissionActions } from './Sidebar/MissionActions';
+import { RobotDetails } from './Sidebar/RobotDetails';
+import { RobotList } from './Sidebar/RobotList';
+import { SidebarHeader } from './Sidebar/SidebarHeader';
 
 interface SidebarProps {
   robots: Robot[];
@@ -30,7 +17,6 @@ interface SidebarProps {
   onToggle: () => void;
   className?: string;
   missions?: MissionWithContext[];
-  locationTags?: NonNullable<ProcessedMapData['features']>['locationTags'];
   isMissionPaused?: boolean;
   onPause?: () => void;
   onResume?: () => void;
@@ -54,26 +40,15 @@ export function Sidebar({
   onManualControl,
   onSetPose,
 }: SidebarProps) {
-  const navigate = useNavigate();
-  const { user, isAdmin, logout } = useAuth();
-  const isUserAdmin = typeof isAdmin === 'function' ? isAdmin() : Boolean(isAdmin);
-  const selectedRobot = robots.find(r => r.id === selectedRobotId);
-  const [showMenu, setShowMenu] = useState(false);
   const [missionDialogOpen, setMissionDialogOpen] = useState(false);
-
-  const missionList = missions ?? [];
-  const paused = Boolean(isMissionPaused);
+  const selectedRobot = robots.find(r => r.id === selectedRobotId);
+  const mapName = selectedRobot?.mapId
+    ? missions?.find(m => m.mapId === selectedRobot.mapId)?.mapName
+    : undefined;
 
   const handleStartMission = (missionId: string) => {
     console.log('Start mission', missionId);
-  };
-
-  const handlePauseResume = () => {
-    if (paused) {
-      onResume?.();
-    } else {
-      onPause?.();
-    }
+    setMissionDialogOpen(false); // Close dialog after starting mission
   };
 
   return (
@@ -84,353 +59,66 @@ export function Sidebar({
       )}
       style={{ width: isOpen ? '20rem' : '4rem' }}
     >
-      <div className="flex items-center justify-between p-4 border-b border-border/60 min-w-[20rem]">
-        <h2
-          className={cn(
-            'font-semibold text-foreground transition-opacity duration-200 whitespace-nowrap',
-            !isOpen && 'opacity-0 hidden'
-          )}
-        >
-          Robots
-        </h2>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="p-1 hover:bg-muted rounded-md transition-colors"
-          title={isOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
-        >
-          {isOpen ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-        </button>
-      </div>
+      <SidebarHeader isOpen={isOpen} onToggle={onToggle} />
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         {/* Collapsed View - Icons Only */}
         {!isOpen && (
-          <div className="flex flex-col items-center py-4 space-y-4 w-16 mx-auto">
-            {robots.map(robot => (
-              <button
-                type="button"
-                key={robot.id}
-                onClick={() => {
-                  if (!isOpen) onToggle();
-                  onSelectRobot(robot);
-                }}
-                className={cn(
-                  'w-10 h-10 flex items-center justify-center rounded-full transition-colors relative',
-                  selectedRobotId === robot.id
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-muted text-muted-foreground'
-                )}
-                title={robot.name}
-              >
-                <div
-                  className={cn(
-                    'absolute top-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white',
-                    robot.status === 'MISSION'
-                      ? 'bg-status-active'
-                      : robot.status.includes('EMERGENCY')
-                        ? 'bg-status-error'
-                        : 'bg-status-offline'
-                  )}
-                />
-                <span className="text-xs font-bold">{robot.name.substring(0, 2)}</span>
-              </button>
-            ))}
-          </div>
+          <RobotList
+            robots={robots}
+            selectedRobotId={selectedRobotId}
+            onSelectRobot={onSelectRobot}
+            isOpen={isOpen}
+          />
         )}
 
         {/* Expanded View */}
-        {isOpen &&
-          (selectedRobot ? (
-            <div className="p-4 min-w-[20rem] h-full flex flex-col gap-6">
-              <button
-                type="button"
-                onClick={() => onSelectRobot(null)}
-                className="flex items-center text-sm mb-4"
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Back to List
-              </button>
+        {isOpen && selectedRobot ? (
+          <div className="p-4 min-w-[20rem] h-full flex flex-col gap-6">
+            <button
+              type="button"
+              onClick={() => onSelectRobot(null)}
+              className="flex items-center text-sm mb-4"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Back to List
+            </button>
 
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-2xl font-bold text-foreground">{selectedRobot.name}</h3>
-                  <div className="flex items-center mt-2 space-x-2">
-                    <span
-                      className={cn(
-                        'px-2 py-1 text-xs font-medium rounded-full',
-                        selectedRobot.status === 'MISSION'
-                          ? 'bg-status-active/15 text-status-active'
-                          : selectedRobot.status.includes('EMERGENCY')
-                            ? 'bg-status-error/15 text-status-error'
-                            : 'bg-status-offline/20 text-status-offline'
-                      )}
-                    >
-                      {selectedRobot.status}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Last seen: {new Date(selectedRobot.lastSeen).toLocaleTimeString()}
-                    </span>
-                  </div>
-                </div>
+            <RobotDetails robot={selectedRobot} mapName={mapName ?? ''} />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-muted rounded-lg">
-                    <div className="flex items-center text-muted-foreground mb-1">
-                      <Battery className="w-4 h-4 mr-2" />
-                      <span className="text-xs font-medium">Battery</span>
-                    </div>
-                    <span className="text-lg font-semibold">
-                      {selectedRobot.battery !== undefined ? `${selectedRobot.battery}%` : '--'}
-                    </span>
-                  </div>
-                  <div className="p-3 bg-muted rounded-lg">
-                    <div className="flex items-center text-muted-foreground mb-1">
-                      <MapPin className="w-4 h-4 mr-2" />
-                      <span className="text-xs font-medium">Map</span>
-                    </div>
-                    <span className="text-lg font-semibold uppercase">
-                      {selectedRobot.name || '--'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-3 mt-auto border-t border-border/60 space-y-3">
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={handlePauseResume}
-                  >
-                    {paused ? (
-                      <>
-                        <Play className="h-4 w-4" />
-                        Resume
-                      </>
-                    ) : (
-                      <>
-                        <Pause className="h-4 w-4" />
-                        Pause
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="flex-1"
-                    onClick={() => onCancel?.()}
-                  >
-                    <XCircle className="h-4 w-4" />
-                    Cancel
-                  </Button>
-                </div>
-                <div className="border-b border-border/60" />
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => onManualControl?.()}
-                  >
-                    <Gamepad2 className="h-4 w-4" />
-                    Manual Control
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => onSetPose?.()}
-                  >
-                    <LocateFixed className="h-4 w-4" />
-                    Set Pose
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="divide-y divide-border/60 min-w-[20rem]">
-              {robots.map(robot => (
-                <button
-                  key={robot.id}
-                  type="button"
-                  onClick={() => onSelectRobot(robot)}
-                  className={cn(
-                    'w-full text-left p-4 hover:bg-muted transition-colors focus:outline-none focus:bg-muted',
-                    selectedRobotId === robot.id && 'bg-primary/10 hover:bg-primary/10'
-                  )}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-medium text-foreground">{robot.name}</span>
-                    <span
-                      className={cn(
-                        'w-2 h-2 rounded-full mt-2',
-                        robot.status === 'MISSION'
-                          ? 'bg-status-active'
-                          : robot.status.includes('EMERGENCY')
-                            ? 'bg-status-error'
-                            : 'bg-status-offline'
-                      )}
-                    />
-                  </div>
-                  <div className="flex justify-between items-center text-xs text-muted-foreground">
-                    <span>{robot.status}</span>
-                    <span>{robot.battery !== undefined ? `${robot.battery}%` : ''}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          ))}
+            <MissionActions
+              isOpen={isOpen}
+              isMissionPaused={isMissionPaused ?? false}
+              onPause={onPause}
+              onResume={onResume}
+              onCancel={onCancel}
+              onManualControl={onManualControl}
+              onSetPose={onSetPose}
+            />
+          </div>
+        ) : isOpen ? (
+          <RobotList
+            robots={robots}
+            selectedRobotId={selectedRobotId}
+            onSelectRobot={onSelectRobot}
+            isOpen={isOpen}
+          />
+        ) : null}
       </div>
 
-      <div className="p-4 border-border bg-card space-y-3">
-        <div className="flex justify-center">
-          {isOpen ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="w-full"
-              onClick={() => setMissionDialogOpen(true)}
-              disabled={(missionList?.length ?? 0) === 0}
-            >
-              <Play className="h-4 w-4 mr-2" />
-              {missionList.length > 0 ? 'View Missions' : 'No Missions'}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="secondary"
-              size="icon"
-              onClick={() => setMissionDialogOpen(true)}
-              disabled={(missionList?.length ?? 0) === 0}
-              aria-label={missionList.length > 0 ? 'View missions' : 'No missions'}
-            >
-              <Play className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-        <div className="border-b border-border/60" />
+      <AdminMenu
+        isOpen={isOpen}
+        onToggle={onToggle}
+        missions={missions ?? []}
+        onOpenMissionDialog={() => setMissionDialogOpen(true)}
+      />
 
-        <MissionDialog
-          open={missionDialogOpen}
-          onOpenChange={setMissionDialogOpen}
-          missions={missionList}
-          onStartMission={handleStartMission}
-        />
-
-        {isOpen ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-foreground/80 text-sm font-semibold">
-                {user?.displayName?.slice(0, 1)?.toUpperCase() || 'U'}
-              </div>
-              <div>
-                <div className="text-sm font-medium text-foreground">
-                  {user?.displayName || user?.username || 'User'}
-                </div>
-                <div className="text-xs text-muted-foreground">{user?.role || 'USER'}</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {isUserAdmin && (
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowMenu(prev => !prev)}
-                    className="p-2 rounded-md hover:bg-muted transition-colors"
-                    title="Admin settings"
-                    aria-label="Admin settings"
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
-                  {showMenu && (
-                    <div className="absolute right-0 bottom-full mb-2 w-44 rounded-md bg-card border border-border shadow-lg z-20">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowMenu(false);
-                          navigate({ to: '/admin/users' });
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors"
-                      >
-                        <Users className="h-4 w-4" />
-                        Manage Users
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowMenu(false);
-                          navigate({ to: '/admin/robots' });
-                        }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors"
-                      >
-                        <Cpu className="h-4 w-4" />
-                        Manage Robots
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={logout}
-                className="p-2 rounded-md hover:bg-muted transition-colors"
-                title="Log out"
-                aria-label="Log out"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-foreground/80 text-sm font-semibold">
-              {user?.displayName?.slice(0, 1)?.toUpperCase() || 'U'}
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              {isUserAdmin && (
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!isOpen) onToggle();
-                      navigate({ to: '/admin/users' });
-                    }}
-                    className="p-2 rounded-md hover:bg-muted transition-colors"
-                    title="Manage users"
-                    aria-label="Manage users"
-                  >
-                    <Users className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!isOpen) onToggle();
-                      navigate({ to: '/admin/robots' });
-                    }}
-                    className="p-2 rounded-md hover:bg-muted transition-colors"
-                    title="Manage robots"
-                    aria-label="Manage robots"
-                  >
-                    <Cpu className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={logout}
-                className="p-2 rounded-md hover:bg-muted transition-colors"
-                title="Log out"
-                aria-label="Log out"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      <MissionDialog
+        open={missionDialogOpen}
+        onOpenChange={setMissionDialogOpen}
+        missions={missions ?? []}
+        onStartMission={handleStartMission}
+      />
     </div>
   );
 }

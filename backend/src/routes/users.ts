@@ -17,7 +17,7 @@ export default async function userRoutes(fastify: AppFastifyInstance) {
       schema: {
         body: {
           type: 'object',
-          required: ['username', 'email', 'role', 'tempPassword'],
+          required: ['username', 'email', 'role'],
           properties: {
             username: { type: 'string', minLength: 3, maxLength: 50 },
             email: { type: 'string', format: 'email' },

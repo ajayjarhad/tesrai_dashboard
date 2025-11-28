@@ -8,8 +8,7 @@ import {
 } from '@tanstack/react-router';
 import { PERMISSIONS } from '@tensrai/shared';
 import { ArrowLeft, Home } from 'lucide-react';
-import { RobotManagement, UserManagement } from '@/features/admin/components';
-import { TemporaryUserCreation } from '@/features/admin/components/temporary-user-creation';
+import { RobotManagement, UserCreation, UserManagement } from '@/features/admin/components';
 import { FirstTimePasswordForm, LoginForm } from '@/features/auth/components';
 import { Dashboard } from '@/features/robot-map/components/Dashboard';
 import type { NavigationService } from '@/lib/navigation';
@@ -137,7 +136,7 @@ const createTempUserRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: '/create-temporary-user',
   component: () => {
-    return <TemporaryUserCreation />;
+    return <UserCreation />;
   },
 });
 

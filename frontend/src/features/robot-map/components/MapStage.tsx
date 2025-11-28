@@ -1,20 +1,20 @@
 import type { ProcessedMapData } from '@tensrai/shared';
 import type Konva from 'konva';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { createMapTransforms } from '@/lib/map/mapTransforms';
 import { laserToPixelPoints, pathToPixelPoints } from '@/lib/map/telemetryTransforms';
 import type { Robot } from '@/types/robot';
 import type { LaserScan, PathMessage, Pose2D } from '@/types/telemetry';
 import { useElementSize } from '../../../hooks/useElementSize';
-import { useMapControls } from '../hooks/useMapControls';
 import { useMapFitting } from '../hooks/useMapFitting';
 import { useMapImage } from '../hooks/useMapImage';
 import { useMapLocations } from '../hooks/useMapLocations';
 import { useRobots } from '../hooks/useRobots';
 import { useZoom } from '../hooks/useZoom';
-import { MapLayers } from './Map/MapLayers';
 import { MapErrorBoundary } from './MapErrorBoundary';
-import { MapOverlay } from './MapOverlay';
+import { MapCanvas } from './MapStage/MapCanvas';
+import { MapControls } from './MapStage/MapControls';
+import { useMapInteraction } from './MapStage/useMapInteraction';
 
 interface MapStageProps {
   mapData: ProcessedMapData | null;
@@ -42,7 +42,7 @@ interface MapStageProps {
 
 export function MapStage({
   mapData,
-  // enablePanning = true,
+  enablePanning = true,
   enableZooming = true,
   width = '100%',
   height = '100%',
@@ -51,23 +51,22 @@ export function MapStage({
   telemetryRobotId,
   selectedRobotId,
   telemetry,
-  onRobotSelect,
   setPoseMode,
   onPoseConfirm,
   onPoseCancel,
 }: MapStageProps) {
-  const stageRef = useRef<Konva.Stage>(null);
-  const mapGroupRef = useRef<Konva.Group>(null);
-  const mapImage = useMapImage(mapData, 'default');
   const { ref: containerRef, size: containerSize } = useElementSize<HTMLDivElement>();
   const [stageScale, setStageScale] = useState(1);
 
-  const { locations } = useMapLocations({
-    mapData,
-  });
+  const mapImage = useMapImage(mapData, 'default');
+  const { locations } = useMapLocations({ mapData });
 
   const { data: robotsFetched = [] } = useRobots();
   const robots = robotsProp ?? robotsFetched;
+
+  // Stable refs for stage and map group so coordinate transforms and hit testing are reliable
+  const stageRef = useRef<Konva.Stage | null>(null);
+  const mapGroupRef = useRef<Konva.Group | null>(null);
 
   const resolvedWidth = typeof width === 'number' ? width : containerSize.width || 800;
   const resolvedHeight = typeof height === 'number' ? height : containerSize.height || 600;
@@ -75,7 +74,6 @@ export function MapStage({
     width: typeof width === 'number' ? `${width}px` : (width ?? '100%'),
     height: typeof height === 'number' ? `${height}px` : (height ?? '100%'),
   };
-
   const fitStageToMap = useMapFitting({
     mapData,
     stageRef,
@@ -84,23 +82,17 @@ export function MapStage({
     onFit: setStageScale,
   });
 
-  const { rotation, zoomBy, rotateStage, resetView } = useMapControls({
-    stageRef,
+  const { rotation, zoomBy, rotateStage, resetView } = useMapInteraction(
     mapData,
     fitStageToMap,
-    onScaleChange: setStageScale,
-  });
+    setStageScale,
+    stageRef
+  );
 
-  useZoom({
+  const handleWheel = useZoom({
     enableZooming,
     onZoom: scale => setStageScale(scale),
   });
-
-  useEffect(() => {
-    if (mapImage && stageRef.current) {
-      stageRef.current.batchDraw();
-    }
-  }, [mapImage]);
 
   const transforms = mapData
     ? createMapTransforms({
@@ -144,25 +136,28 @@ export function MapStage({
   return (
     <MapErrorBoundary>
       <div ref={containerRef} className={`relative ${className || ''}`} style={containerStyle}>
-        <MapLayers
+        <MapCanvas
           stageRef={stageRef}
           mapGroupRef={mapGroupRef}
           mapData={mapData}
           mapImage={mapImage}
-          rotation={rotation}
-          locations={locations}
           robots={robots}
+          locations={locations}
+          selectedRobotId={selectedRobotId ?? null}
+          stageScale={stageScale}
+          {...(setPoseMode !== undefined ? { setPoseMode } : {})}
+          {...(onPoseConfirm ? { onPoseConfirm } : {})}
+          {...(onPoseCancel ? { onPoseCancel } : {})}
           laserPoints={laserPoints}
           pathPoints={pathPoints}
-          onRobotSelect={onRobotSelect}
-          stageScale={stageScale}
-          selectedRobotId={selectedRobotId ?? null}
-          setPoseMode={setPoseMode ?? false}
-          onPoseConfirm={onPoseConfirm ?? (() => {})}
-          onPoseCancel={onPoseCancel ?? (() => {})}
+          width={resolvedWidth}
+          height={resolvedHeight}
+          rotation={rotation}
+          {...(handleWheel ? { onWheel: handleWheel } : {})}
+          enablePanning={enablePanning}
         />
 
-        <MapOverlay
+        <MapControls
           onZoomIn={() => zoomBy('in')}
           onZoomOut={() => zoomBy('out')}
           onRotateLeft={() => rotateStage(-15)}

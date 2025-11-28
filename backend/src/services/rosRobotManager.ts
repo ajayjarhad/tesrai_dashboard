@@ -294,19 +294,39 @@ export class RosRobotManager extends EventEmitter {
   }
 
   private processTransform(t: any) {
+    const transformData = this.extractTransformData(t);
+    if (!transformData) return;
+
+    this.updateTransformValues(transformData);
+  }
+
+  private extractTransformData(t: any) {
     const parent = t?.header?.frame_id;
     const child = t?.child_frame_id;
     const trans = t?.transform?.translation;
     const rot = t?.transform?.rotation;
-    if (!parent || !child || !trans || !rot) return;
 
-    const stamp = t?.header?.stamp;
-    const stampMsRaw =
-      stamp && typeof stamp.sec === 'number' && typeof stamp.nanosec === 'number'
-        ? stamp.sec * 1000 + stamp.nanosec / 1e6
-        : undefined;
-    // Static transforms often carry stamp=0; treat them as timeless so they don't get flagged stale.
-    const stampMs = stampMsRaw === 0 ? undefined : stampMsRaw;
+    if (!parent || !child || !trans || !rot) return null;
+
+    return {
+      parent,
+      child,
+      trans,
+      rot,
+      stamp: t?.header?.stamp,
+    };
+  }
+
+  private updateTransformValues(transformData: {
+    parent: string;
+    child: string;
+    trans: any;
+    rot: any;
+    stamp: any;
+  }) {
+    const { parent, child, trans, rot, stamp } = transformData;
+
+    const stampMs = this.getStampMs(stamp);
     const yaw = quaternionToYaw({
       x: rot.x ?? 0,
       y: rot.y ?? 0,
@@ -314,6 +334,25 @@ export class RosRobotManager extends EventEmitter {
       w: rot.w ?? 1,
     });
 
+    this.updateTransformBasedOnFrame(parent, child, trans, yaw, stampMs);
+  }
+
+  private getStampMs(stamp: any): number | undefined {
+    const stampMsRaw =
+      stamp && typeof stamp.sec === 'number' && typeof stamp.nanosec === 'number'
+        ? stamp.sec * 1000 + stamp.nanosec / 1e6
+        : undefined;
+    // Static transforms often carry stamp=0; treat them as timeless so they don't get flagged stale.
+    return stampMsRaw === 0 ? undefined : stampMsRaw;
+  }
+
+  private updateTransformBasedOnFrame(
+    parent: string,
+    child: string,
+    trans: any,
+    yaw: number,
+    stampMs?: number
+  ) {
     if (parent === 'map' && child === 'odom') {
       this.mapToOdom = { x: trans.x ?? 0, y: trans.y ?? 0, yaw, stampMs };
     }

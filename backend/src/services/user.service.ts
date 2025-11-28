@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient, Role, User } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { generateTemporaryPassword } from '../utils/password-generator.js';
 import { AuthTracer } from '../utils/tracing.js';
 
 export interface CreateUserInput {
@@ -7,7 +8,7 @@ export interface CreateUserInput {
   email: string;
   role: Role;
   displayName?: string;
-  tempPassword: string;
+  tempPassword?: string;
 }
 
 interface CreateUserResponse {
@@ -70,11 +71,12 @@ export async function createUserWithTempPassword(
     throw new Error('User with this email or username already exists');
   }
 
-  if (!userData.tempPassword || userData.tempPassword.length < 8) {
+  const tempPassword = userData.tempPassword || generateTemporaryPassword();
+
+  if (tempPassword.length < 8) {
     throw new Error('Temporary password must be at least 8 characters long');
   }
 
-  const tempPassword = userData.tempPassword;
   const tempPasswordHash = await bcrypt.hash(tempPassword, 12);
   const tempPasswordExpiry = new Date(Date.now() + 72 * 60 * 60 * 1000);
 
