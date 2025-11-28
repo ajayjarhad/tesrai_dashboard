@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  username           String    @unique
+  email              String    @unique
+  passwordHash       String
+  tempPasswordHash   String?   @db.String
+  tempPasswordExpiry DateTime?
+  role               Role      @default(USER)
+  displayName        String?
+  mustResetPassword  Boolean   @default(false)
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  @@index([role])
+}
+
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  token     String   @unique
+  userId    String   @db.ObjectId
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Verification {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String
+  value      String
+  expires    DateTime
+
+  @@unique([identifier, value])
+}
+
+model AuditLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  role      String
+  action    String
+  timestamp DateTime @default(now())
+  metadata  Json?
+
+  @@index([userId])
+  @@index([action])
+  @@index([timestamp])
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model Robot {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  name        String      @unique
+  status      RobotMode   @default(UNKNOWN)
+  battery     Float?      // Battery percentage (0-100)
+  bridgePort  Int?
+  channels    Json?
+  
+  // Location info
+  mapId       String?     @db.ObjectId // ID of the map the robot is on
+  map         Map?        @relation(fields: [mapId], references: [id])
+  x           Float?      // X coordinate
+  y           Float?      // Y coordinate
+  theta       Float?      // Orientation in radians
+  
+  ipAddress   String?     // For direct communication if needed
+  lastSeen    DateTime    @default(now())
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Map {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  image     Bytes    // Binary PGM data
+  metadata  Json     // YAML metadata (resolution, origin)
+  features  Json     // Location tags, missions
+  robots    Robot[]
+}
+
+enum RobotMode {
+  MISSION
+  DOCKING
+  CHARGING
+  SW_EMERGENCY
+  HW_EMERGENCY
+  TELEOP
+  HRI
+  UNKNOWN
+}

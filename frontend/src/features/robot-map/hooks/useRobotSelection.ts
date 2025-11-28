@@ -1,0 +1,52 @@
+import { useEffect, useState } from 'react';
+import type { Robot } from '@/types/robot';
+
+export function useRobotSelection(robots: Robot[]) {
+  const [selectedRobotId, setSelectedRobotId] = useState<string | null>(null);
+  const [activeMapId, setActiveMapId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Derived active robot (selected or first on map)
+  // Note: The original logic in Dashboard.tsx line 21 was:
+  // const activeRobotId = selectedRobotId ?? robots.find(robot => robot.mapId)?.id ?? null;
+  // We'll expose this as well.
+  const activeRobotId = selectedRobotId ?? robots.find(robot => robot.mapId)?.id ?? null;
+
+  // Initialize or recover active map when robots load or change
+  useEffect(() => {
+    if (activeMapId) return;
+    const firstWithMap = robots.find(robot => robot.mapId);
+    if (firstWithMap?.mapId) {
+      setActiveMapId(firstWithMap.mapId);
+    }
+  }, [activeMapId, robots]);
+
+  // Keep active map in sync with the selected robot when its map changes
+  useEffect(() => {
+    const selectedRobot = robots.find(robot => robot.id === selectedRobotId);
+    if (selectedRobot?.mapId && selectedRobot.mapId !== activeMapId) {
+      setActiveMapId(selectedRobot.mapId);
+    }
+  }, [activeMapId, robots, selectedRobotId]);
+
+  const handleSelectRobot = (robot: Robot | null) => {
+    setSelectedRobotId(robot?.id ?? null);
+    if (robot?.mapId) {
+      setActiveMapId(robot.mapId);
+    }
+    if (robot) {
+      setIsSidebarOpen(true);
+    }
+  };
+
+  return {
+    selectedRobotId,
+    setSelectedRobotId,
+    activeMapId,
+    setActiveMapId,
+    isSidebarOpen,
+    setIsSidebarOpen,
+    activeRobotId,
+    handleSelectRobot,
+  };
+}

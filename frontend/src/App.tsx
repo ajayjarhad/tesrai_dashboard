@@ -1,8 +1,15 @@
+import { RouterProvider } from '@tanstack/react-router';
+import { AppErrorBoundary } from './components/error-boundary/AppErrorBoundary';
+import { AppProviders } from './providers/AppProviders';
+import { router } from './router/index';
+
 function App() {
   return (
-    <div>
-      <h1>Robot Dashboard</h1>
-    </div>
+    <AppErrorBoundary>
+      <AppProviders>
+        <RouterProvider router={router} />
+      </AppProviders>
+    </AppErrorBoundary>
   );
 }
 

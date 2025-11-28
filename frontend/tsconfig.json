@@ -2,18 +2,26 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "composite": true,
-    "baseUrl": ".",
     "rootDir": "./src",
     "outDir": "./dist",
     "jsx": "react-jsx",
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
     "module": "ESNext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "allowImportingTsExtensions": true,
     "types": ["vite/client"],
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@shared/*": ["../shared/src/*"],
+      "@tensrai/shared": ["../shared/src"]
+    }
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts", "src/**/*.mts", "src/**/*.cts"],
+  "references": [{ "path": "./tsconfig.node.json" }, { "path": "../shared" }]
 }

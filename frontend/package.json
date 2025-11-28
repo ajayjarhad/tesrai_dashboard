@@ -4,30 +4,55 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 5002",
     "build": "tsc -b && vite build",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format .",
     "format:write": "biome format --write .",
     "type-check": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "shadcn:add": "bunx shadcn-ui@latest add",
+    "shadcn:init": "bunx shadcn-ui@latest init"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@tanstack/react-query": "^5.90.9",
+    "@tanstack/react-router": "^1.136.5",
     "@tensrai/shared": "workspace:*",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "js-yaml": "^4.1.1",
+    "konva": "^10.0.9",
+    "ky": "^1.14.0",
+    "lucide-react": "^0.553.0",
+    "nanoid": "^5.1.6",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-error-boundary": "^6.0.0",
+    "react-hook-form": "^7.66.1",
+    "react-konva": "^19.2.0",
+    "tailwind-merge": "^2.2.0",
+    "tailwindcss-animate": "^1.0.7",
+    "sonner": "^1.5.0",
+    "zod": "^4.1.12",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@types/node": "^24.10.0",
+    "@tailwindcss/typography": "^0.5.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.10.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.1.0",
+    "autoprefixer": "^10.4.0",
     "babel-plugin-react-compiler": "^1.0.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
     "typescript": "^5.9.3",
-    "vite": "npm:rolldown-vite@7.2.2"
-  },
-  "overrides": {
-    "vite": "npm:rolldown-vite@7.2.2"
+    "vite": "^5.0.0"
   }
 }

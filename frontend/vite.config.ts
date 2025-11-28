@@ -2,19 +2,27 @@ import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    react({
-      babel: {
-        plugins: [['babel-plugin-react-compiler']],
+// Keep console logging in dev so diagnostics (MapLoad/MapImage, etc.) show up.
+export default defineConfig(({ command }) => {
+  const isBuild = command === 'build';
+
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+        '@tensrai/shared': path.resolve(__dirname, '../shared/src'),
+        '@shared': path.resolve(__dirname, '../shared/src'),
       },
-    }),
-  ],
-  resolve: {
-    alias: {
-      '@shared': path.resolve(__dirname, '../shared/src'),
-      '@': path.resolve(__dirname, './src'),
     },
-  },
+    server: {
+      port: 5000,
+      host: '0.0.0.0',
+    },
+    esbuild: isBuild
+      ? {
+          drop: ['console', 'debugger'],
+        }
+      : undefined,
+  };
 });

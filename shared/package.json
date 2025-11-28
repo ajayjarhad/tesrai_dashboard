@@ -12,16 +12,26 @@
     }
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "clean": "rm -rf dist",
-    "type-check": "tsc --noEmit"
+    "build": "tsc --build --force",
+    "dev": "tsc --build --watch",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo",
+    "type-check": "tsc --build"
   },
-  "keywords": ["robotics", "shared", "types", "dashboard"],
+  "keywords": [
+    "robotics",
+    "shared",
+    "types",
+    "dashboard"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "typescript": "^5.9.3"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "zod": "^4.1.12"
+  }
 }

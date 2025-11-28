@@ -1,0 +1,175 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Neutral surfaces and foreground */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 7%;
+
+    /* Layered surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    /* Popovers */
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+
+    /* Brand-forward primary */
+    --primary: 120 100% 50%;
+    --primary-foreground: 120 40% 10%;
+
+    /* Supporting neutrals */
+    --secondary: 0 0% 93%;
+    --secondary-foreground: 0 0% 12%;
+
+    /* Muted text and fills */
+    --muted: 0 0% 92%;
+    --muted-foreground: 0 0% 40%;
+
+    /* Deep accent for hover/pressed */
+    --accent: 120 32% 16%;
+    --accent-foreground: 0 0% 96%;
+
+    /* Destructive stays red */
+    --destructive: 0 84% 58%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Chrome + focus */
+    --border: 120 2% 80%;
+    --input: 120 2% 78%;
+    --ring: 120 92% 44%;
+
+    /* Status palette (separate from brand) */
+    --status-online: 170 84% 38%;
+    --status-offline: 0 0% 58%;
+    --status-warning: 38 100% 52%;
+    --status-error: 0 84% 58%;
+    --status-active: 210 82% 52%;
+
+    /* Safety cues */
+    --safety-estop: 0 84% 58%;
+    --safety-caution: 38 100% 52%;
+    --safety-safe: 145 28% 35%;
+
+    /* Telemetry accents */
+    --telemetry-battery: 170 80% 40%;
+    --telemetry-signal: 210 80% 50%;
+    --telemetry-temperature: 20 90% 55%;
+
+    /* Radius for rounded elements */
+    --radius: 0.625rem;
+
+    /* Typography settings */
+    --font-sans:
+      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
+      sans-serif;
+    --font-mono:
+      ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  .dark {
+    /* Dark mode surfaces */
+    --background: 0 0% 5%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 96%;
+
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 95%;
+
+    /* Brand primary on dark */
+    --primary: 120 100% 50%;
+    --primary-foreground: 120 36% 10%;
+
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 70%;
+
+    --accent: 120 26% 18%;
+    --accent-foreground: 0 0% 96%;
+
+    --destructive: 0 72% 62%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 22%;
+    --ring: 120 92% 44%;
+
+    /* Status palette in dark */
+    --status-online: 170 74% 60%;
+    --status-offline: 0 0% 50%;
+    --status-warning: 38 100% 62%;
+    --status-error: 0 84% 64%;
+    --status-active: 210 82% 64%;
+
+    /* Safety in dark */
+    --safety-estop: 0 84% 64%;
+    --safety-caution: 38 100% 60%;
+    --safety-safe: 145 26% 42%;
+
+    /* Telemetry in dark */
+    --telemetry-battery: 170 74% 60%;
+    --telemetry-signal: 210 80% 64%;
+    --telemetry-temperature: 20 90% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+}
+
+/* High-contrast mode support for industrial environments */
+@media (prefers-contrast: high) {
+  :root {
+    --border: 0 0% 0%;
+    --ring: 0 0% 0%;
+    --status-error: 0 0% 0%;
+    --safety-estop: 0 0% 0%;
+  }
+
+  .dark {
+    --border: 0 0% 100%;
+    --ring: 0 0% 100%;
+    --status-error: 0 0% 100%;
+    --safety-estop: 0 0% 100%;
+  }
+}
+
+/* Reduced motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+  }
+}
+
+/* Focus styles for keyboard navigation */
+@layer utilities {
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  .safety-critical {
+    @apply focus:ring-4 focus:ring-safety-estop focus:ring-offset-4 focus:ring-offset-background;
+  }
+
+  .high-contrast-border {
+    @apply border-2 border-current;
+  }
+}
