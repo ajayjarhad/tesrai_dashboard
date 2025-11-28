@@ -31,7 +31,7 @@ interface CreatedUser {
 export function TemporaryUserCreation() {
   const navigate = useNavigate();
   const { hasPermission, session } = useAuth();
-  const sessionToken = session?.sessionToken || session?.token;
+  const sessionToken = session?.sessionId;
   const authHeaders = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : undefined;
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);

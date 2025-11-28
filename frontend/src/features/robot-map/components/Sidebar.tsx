@@ -1,17 +1,18 @@
 import { useNavigate } from '@tanstack/react-router';
+import type { ProcessedMapData } from '@tensrai/shared';
 import {
   Battery,
   ChevronLeft,
   ChevronRight,
   Cpu,
+  Gamepad2,
+  LocateFixed,
   LogOut,
   MapPin,
   MoreVertical,
   Pause,
   Play,
   Users,
-  Gamepad2,
-  LocateFixed,
   XCircle,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -29,6 +30,7 @@ interface SidebarProps {
   onToggle: () => void;
   className?: string;
   missions?: MissionWithContext[];
+  locationTags?: NonNullable<ProcessedMapData['features']>['locationTags'];
   isMissionPaused?: boolean;
   onPause?: () => void;
   onResume?: () => void;

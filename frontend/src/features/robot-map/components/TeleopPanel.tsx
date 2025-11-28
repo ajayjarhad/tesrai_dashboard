@@ -1,5 +1,5 @@
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { TeleopCommand } from '@/types/telemetry';
@@ -115,11 +115,9 @@ export function TeleopPanel({
       const scaledX = Math.max(-1, Math.min(1, normX * POINTER_GAIN));
       const scaledY = Math.max(-1, Math.min(1, normY * POINTER_GAIN));
 
-      const linear =
-        Math.abs(scaledY) > DEADZONE ? -Math.sign(scaledY) * MAX_LINEAR : 0;
+      const linear = Math.abs(scaledY) > DEADZONE ? -Math.sign(scaledY) * MAX_LINEAR : 0;
       // ROS positive angular.z = left turn; invert so dragging right turns right (negative).
-      const angular =
-        Math.abs(scaledX) > DEADZONE ? -Math.sign(scaledX) * MAX_ANGULAR : 0;
+      const angular = Math.abs(scaledX) > DEADZONE ? -Math.sign(scaledX) * MAX_ANGULAR : 0;
 
       setVector({ linear, angular });
       const rawX = scaledX * allowed * (radius ? Math.min(1, distance / radius) : 0);
@@ -192,11 +190,7 @@ export function TeleopPanel({
     const handleKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       const handled =
-        key === 'w' ||
-        key === 'a' ||
-        key === 's' ||
-        key === 'd' ||
-        key.startsWith('arrow');
+        key === 'w' || key === 'a' || key === 's' || key === 'd' || key.startsWith('arrow');
 
       if (!handled) return;
 
@@ -237,7 +231,6 @@ export function TeleopPanel({
         className
       )}
       style={style}
-      aria-label="Teleoperation controls"
     >
       <div className="rounded-xl border border-border bg-card/95 backdrop-blur shadow-2xl p-4 space-y-4">
         <div className="flex items-start justify-between gap-2">

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import EventEmitter from 'events';
+import EventEmitter from 'node:events';
 import ROSLIB from 'roslib';
 import WebSocket from 'ws';
 

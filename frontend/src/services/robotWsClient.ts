@@ -31,11 +31,16 @@ export const createRobotWsClient = (robotId: string) => {
 
   const notifyStatus = (next: ConnectionStatus) => {
     status = next;
-    statusHandlers.forEach(handler => handler(next));
+    statusHandlers.forEach(handler => {
+      handler(next);
+    });
   };
 
   const connect = () => {
-    if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+    if (
+      socket &&
+      (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)
+    ) {
       return;
     }
 
@@ -44,17 +49,24 @@ export const createRobotWsClient = (robotId: string) => {
 
     socket.onopen = () => {
       reconnectAttempts = 0;
-      notifyStatus('connected');
+      statusHandlers.forEach(handler => {
+        handler('connected');
+      });
     };
 
-    socket.onmessage = event => {
+    const notifyEvent = (event: MessageEvent) => {
+      if (status !== 'connected') return;
       try {
         const parsed = JSON.parse(event.data as string) as WsEvent;
-        eventHandlers.forEach(handler => handler(parsed));
+        eventHandlers.forEach(handler => {
+          handler(parsed);
+        });
       } catch {
         // ignore malformed messages
       }
     };
+
+    socket.onmessage = notifyEvent;
 
     socket.onerror = () => {
       notifyStatus('error');

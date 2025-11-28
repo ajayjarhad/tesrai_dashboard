@@ -21,7 +21,7 @@ export interface PathMessage {
   header?: {
     frame_id?: string;
   };
-  poses: Array<ROSPoseStamped>;
+  poses: ROSPoseStamped[];
 }
 
 export interface OdometryMessage {

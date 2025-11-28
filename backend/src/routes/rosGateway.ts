@@ -1,8 +1,7 @@
 // @ts-nocheck
-import fp from 'fastify-plugin';
 import websocket from '@fastify/websocket';
 import type { FastifyInstance } from 'fastify';
-import WebSocket from 'ws';
+import fp from 'fastify-plugin';
 import { RosRegistry } from '../services/rosRegistry.js';
 
 type IncomingMessage =

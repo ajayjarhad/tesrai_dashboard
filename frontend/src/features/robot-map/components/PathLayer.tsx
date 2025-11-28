@@ -1,5 +1,5 @@
-import { Group, Line } from 'react-konva';
 import type { PixelPoint } from '@tensrai/shared';
+import { Group, Line } from 'react-konva';
 
 interface PathLayerProps {
   points: PixelPoint[];

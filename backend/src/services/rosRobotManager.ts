@@ -1,9 +1,9 @@
 // @ts-nocheck
-import EventEmitter from 'events';
+import EventEmitter from 'node:events';
 import type { RosChannelConfig, RosRobotConfig } from '../config/ros.js';
 import { createLatestThrottle } from '../utils/throttle.js';
-import { RosBridgeConnection } from './rosBridgeConnection.js';
-import { combineTransforms, quaternionToYaw, type Pose2D } from '../utils/transform.js';
+import { combineTransforms, type Pose2D, quaternionToYaw } from '../utils/transform.js';
+import type { RosBridgeConnection } from './rosBridgeConnection.js';
 
 type ChannelRuntime = {
   config: RosChannelConfig;
@@ -15,7 +15,7 @@ type ChannelRuntime = {
 const DEFAULT_LASER_OFFSET = { x: 0.12, y: 0, yaw: 0 };
 const AMCL_MIN_DELTA_POS = 0.05;
 const AMCL_MIN_DELTA_YAW = 0.05;
-const SCAN_POSE_MAX_DRIFT_MS = 100;
+const _SCAN_POSE_MAX_DRIFT_MS = 100;
 // Allow older TF/odom stamps to avoid dropping to AMCL-only fallback when clocks lag.
 const TF_STALE_MS = 1200;
 
@@ -71,14 +71,14 @@ export class RosRobotManager extends EventEmitter {
   private started = false;
   private laserOffset = { ...DEFAULT_LASER_OFFSET };
   private mapPose?: Pose2D;
-  private mapPoseStampMs?: number;
+  // private mapPoseStampMs?: number;
   private mapToOdom?: Pose2D & { stampMs?: number };
   private laserToBase?: Pose2D;
   private odomPose?: Pose2D & { stampMs?: number };
   private tfSubscribed = false;
   private baseFrames: string[] = ['base_link', 'base_footprint'];
 
-  constructor(private readonly config: RosRobotConfig) {
+  constructor(readonly config: RosRobotConfig) {
     super();
     this.laserOffset = { ...DEFAULT_LASER_OFFSET, ...(config as any).laserOffset };
     this.initializeConnections();
@@ -115,7 +115,8 @@ export class RosRobotManager extends EventEmitter {
   handleCommand(channelName: string, payload: unknown): { ok: boolean; error?: string } {
     const runtime = this.channels.get(channelName);
     if (!runtime) return { ok: false, error: `Unknown channel: ${channelName}` };
-    if (runtime.config.direction !== 'publish') return { ok: false, error: `Channel ${channelName} is not publishable` };
+    if (runtime.config.direction !== 'publish')
+      return { ok: false, error: `Channel ${channelName} is not publishable` };
     const connection = this.getConnectionForChannel(runtime.config);
     if (!connection) return { ok: false, error: `No connection for channel ${channelName}` };
     try {
@@ -128,28 +129,10 @@ export class RosRobotManager extends EventEmitter {
     }
   }
 
-  private initializeConnections() {
-    const defaultConnectionId = 'default';
-    const defaultConnection = new RosBridgeConnection({ id: defaultConnectionId, url: this.config.bridgeUrl });
-    defaultConnection.on('error', error => this.emit('error', error));
-    defaultConnection.on('connected', () => this.handleConnectionConnected(defaultConnectionId));
-    defaultConnection.on('disconnected', () => this.handleConnectionDisconnected(defaultConnectionId));
-    this.connections.set(defaultConnectionId, defaultConnection);
-  }
-
-  private initializeChannels() {
-    for (const channel of this.config.channels) {
-      this.channels.set(channel.name, { config: channel, errorCount: 0 });
-    }
-  }
-
-  private getConnectionForChannel(config: RosChannelConfig) {
-    return this.connections.get(config.connectionId ?? 'default');
-  }
-
   private handleConnectionConnected(connectionId: string) {
     const connection = this.connections.get(connectionId);
-    if (!connection || !connection.isConnected()) return;
+    if (!connection) return;
+
     if (!this.tfSubscribed && connectionId === 'default') {
       this.subscribeTf(connection);
       this.tfSubscribed = true;
@@ -168,7 +151,9 @@ export class RosRobotManager extends EventEmitter {
         this.emit('channel-data', { channel: name, data: sanitized });
       });
       try {
-        const unsubscribe = connection.subscribe(runtime.config.topic, runtime.config.msgType, d => throttled(d));
+        const unsubscribe = connection.subscribe(runtime.config.topic, runtime.config.msgType, d =>
+          throttled(d)
+        );
         runtime.unsubscribe = unsubscribe;
         runtime.errorCount = 0;
       } catch (error) {
@@ -178,12 +163,9 @@ export class RosRobotManager extends EventEmitter {
     }
   }
 
-  private handleConnectionDisconnected(connectionId: string) {
-    for (const runtime of this.channels.values()) {
-      if ((runtime.config.connectionId ?? 'default') !== connectionId) continue;
-      runtime.unsubscribe?.();
-      runtime.unsubscribe = undefined;
-    }
+  private getConnectionForChannel(config: RosChannelConfig) {
+    const connectionId = config.connectionId ?? 'default';
+    return this.connections.get(connectionId);
   }
 
   private processOdom(raw: any) {
@@ -224,18 +206,16 @@ export class RosRobotManager extends EventEmitter {
       if (dPos < AMCL_MIN_DELTA_POS && dYaw < AMCL_MIN_DELTA_YAW) return raw;
     }
     this.mapPose = nextPose;
-    const stamp = raw?.header?.stamp;
-    this.mapPoseStampMs =
-      stamp && typeof stamp.sec === 'number' && typeof stamp.nanosec === 'number'
-        ? stamp.sec * 1000 + stamp.nanosec / 1e6
-        : Date.now();
+    // const stamp = raw?.header?.stamp;
+    // this.mapPoseStampMs =
+    //   stamp && typeof stamp.sec === 'number' && typeof stamp.nanosec === 'number'
+    //     ? stamp.sec * 1000 + stamp.nanosec / 1e6
+    //     : Date.now();
     return raw;
   }
 
   private processLaser(raw: any) {
     if (!raw?.ranges || !Array.isArray(raw.ranges)) return raw;
-    // use TF laser->base if present, else static offset
-    const laserOffset = this.laserToBase ?? this.laserOffset;
 
     const scanStamp = raw?.header?.stamp;
     const scanStampMs =
@@ -244,24 +224,35 @@ export class RosRobotManager extends EventEmitter {
         : null;
     if (scanStampMs === null) return raw;
 
+    const pose = this.getLaserPose(scanStampMs);
+    if (!pose) return raw;
+
+    const laserOffset = this.laserToBase ?? this.laserOffset;
+    const points = this.computeLaserPoints(raw, pose, laserOffset);
+
+    return { ...raw, points, frame: 'map' };
+  }
+
+  private getLaserPose(scanStampMs: number): Pose2D | undefined {
     const tfStamp = (this.mapToOdom as any)?.stampMs;
     const odomStamp = this.odomPose?.stampMs;
     const tfStale = tfStamp !== undefined && Math.abs(scanStampMs - tfStamp) > TF_STALE_MS;
     const odomStale = odomStamp !== undefined && Math.abs(scanStampMs - odomStamp) > TF_STALE_MS;
 
-    // Prefer TF-based pose when available and not stale; otherwise fall back to last AMCL map pose.
-    let pose: Pose2D | undefined;
-    let branch: 'tf+odom' | 'mapPose' | 'raw' = 'raw';
     if (this.mapToOdom && this.odomPose && !tfStale && !odomStale) {
-      pose = combineTransforms(this.mapToOdom, this.odomPose);
-      branch = 'tf+odom';
-    } else if (this.mapPose) {
-      pose = { ...this.mapPose };
-      branch = 'mapPose';
+      return combineTransforms(this.mapToOdom, this.odomPose);
     }
+    if (this.mapPose) {
+      return { ...this.mapPose };
+    }
+    return undefined;
+  }
 
-    if (!pose) return raw;
-
+  private computeLaserPoints(
+    raw: any,
+    pose: Pose2D,
+    laserOffset: Pose2D
+  ): Array<{ x: number; y: number }> {
     const { angle_min, angle_increment, ranges, range_min, range_max } = raw;
     const cosOff = Math.cos(laserOffset.yaw);
     const sinOff = Math.sin(laserOffset.yaw);
@@ -281,8 +272,7 @@ export class RosRobotManager extends EventEmitter {
       const wy = pose.y + sinPose * bx + cosPose * by;
       points.push({ x: wx, y: wy });
     }
-
-    return { ...raw, points, frame: 'map' };
+    return points;
   }
 
   private subscribeTf(connection: RosBridgeConnection) {
@@ -299,33 +289,39 @@ export class RosRobotManager extends EventEmitter {
     const transforms = msg?.transforms;
     if (!Array.isArray(transforms)) return;
     for (const t of transforms) {
-      const parent = t?.header?.frame_id;
-      const child = t?.child_frame_id;
-      const trans = t?.transform?.translation;
-      const rot = t?.transform?.rotation;
-      if (!parent || !child || !trans || !rot) continue;
-      const stamp = t?.header?.stamp;
-      const stampMsRaw =
-        stamp && typeof stamp.sec === 'number' && typeof stamp.nanosec === 'number'
-          ? stamp.sec * 1000 + stamp.nanosec / 1e6
-          : undefined;
-      // Static transforms often carry stamp=0; treat them as timeless so they don't get flagged stale.
-      const stampMs = stampMsRaw === 0 ? undefined : stampMsRaw;
-      const yaw = quaternionToYaw({
-        x: rot.x ?? 0,
-        y: rot.y ?? 0,
-        z: rot.z ?? 0,
-        w: rot.w ?? 1,
-      });
-      if (parent === 'map' && child === 'odom') {
-        this.mapToOdom = { x: trans.x ?? 0, y: trans.y ?? 0, yaw, stampMs };
-      }
-      if (
-        (child === 'laser' || child === 'base_scan') &&
-        (parent === 'base_footprint' || parent === 'base_link' || this.baseFrames.includes(parent))
-      ) {
-        this.laserToBase = { x: trans.x ?? 0, y: trans.y ?? 0, yaw };
-      }
+      this.processTransform(t);
+    }
+  }
+
+  private processTransform(t: any) {
+    const parent = t?.header?.frame_id;
+    const child = t?.child_frame_id;
+    const trans = t?.transform?.translation;
+    const rot = t?.transform?.rotation;
+    if (!parent || !child || !trans || !rot) return;
+
+    const stamp = t?.header?.stamp;
+    const stampMsRaw =
+      stamp && typeof stamp.sec === 'number' && typeof stamp.nanosec === 'number'
+        ? stamp.sec * 1000 + stamp.nanosec / 1e6
+        : undefined;
+    // Static transforms often carry stamp=0; treat them as timeless so they don't get flagged stale.
+    const stampMs = stampMsRaw === 0 ? undefined : stampMsRaw;
+    const yaw = quaternionToYaw({
+      x: rot.x ?? 0,
+      y: rot.y ?? 0,
+      z: rot.z ?? 0,
+      w: rot.w ?? 1,
+    });
+
+    if (parent === 'map' && child === 'odom') {
+      this.mapToOdom = { x: trans.x ?? 0, y: trans.y ?? 0, yaw, stampMs };
+    }
+    if (
+      (child === 'laser' || child === 'base_scan') &&
+      (parent === 'base_footprint' || parent === 'base_link' || this.baseFrames.includes(parent))
+    ) {
+      this.laserToBase = { x: trans.x ?? 0, y: trans.y ?? 0, yaw };
     }
   }
 }

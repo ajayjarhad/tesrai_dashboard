@@ -14,6 +14,8 @@ import type {
   WorldPoint,
 } from '@tensrai/shared';
 
+export type { MapTransforms };
+
 /**
  * Convert quaternion to yaw angle (rotation around Z axis)
  */
