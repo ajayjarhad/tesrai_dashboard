@@ -22,6 +22,7 @@ const CreateRobotSchema = z.object({
   theta: z.number().optional(),
   ipAddress: z.string().optional(),
   bridgePort: z.number().int().min(1).max(65535).optional(),
+  secondaryBridgePort: z.number().int().min(1).max(65535).optional(),
   channels: z
     .array(
       z.object({
@@ -45,6 +46,7 @@ const UpdateRobotSchema = z.object({
   theta: z.number().optional(),
   ipAddress: z.string().optional(),
   bridgePort: z.number().int().min(1).max(65535).optional(),
+  secondaryBridgePort: z.number().int().min(1).max(65535).optional(),
   channels: z
     .array(
       z.object({
