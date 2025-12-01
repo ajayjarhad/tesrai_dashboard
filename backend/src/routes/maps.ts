@@ -1,4 +1,3 @@
-// import type { FastifyPluginAsync } from 'fastify';
 import type { AppFastifyInstance, AppFastifyReply, AppFastifyRequest } from '../types/app.js';
 
 const mapRoutes: any = async (server: AppFastifyInstance) => {

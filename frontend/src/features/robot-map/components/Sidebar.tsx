@@ -47,7 +47,10 @@ export function Sidebar({
     : undefined;
 
   const handleStartMission = (missionId: string) => {
-    console.log('Start mission', missionId);
+    // TODO: Implement mission start functionality
+    if (missionId) {
+      console.log(missionId);
+    }
     setMissionDialogOpen(false); // Close dialog after starting mission
   };
 

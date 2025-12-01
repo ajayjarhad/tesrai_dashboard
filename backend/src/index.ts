@@ -7,8 +7,6 @@ import mapRoutes from './routes/maps.js';
 import robotRoutes from './routes/robots.js';
 import rosGateway from './routes/rosGateway.js';
 import userRoutes from './routes/users.js';
-// Temporarily disabled OpenTelemetry
-// import { shutdownTelemetry } from './lib/telemetry.js';
 import type { AppFastifyInstance, AppFastifyReply, AppFastifyRequest } from './types/app.js';
 
 type FastifyFactory = (options?: Record<string, unknown>) => AppFastifyInstance;
@@ -141,14 +139,12 @@ const start = async () => {
 process.on('SIGINT', async () => {
   server.log.info('SIGINT received, shutting down gracefully');
   await server.close();
-  // await shutdownTelemetry(); // Temporarily disabled
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   server.log.info('SIGTERM received, shutting down gracefully');
   await server.close();
-  // await shutdownTelemetry(); // Temporarily disabled
   process.exit(0);
 });
 
