@@ -1,5 +1,4 @@
 import type { PrismaClient } from '@prisma/client';
-// import { getEnv } from '@tensrai/shared';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 

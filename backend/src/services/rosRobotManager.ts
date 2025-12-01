@@ -206,11 +206,6 @@ export class RosRobotManager extends EventEmitter {
       if (dPos < AMCL_MIN_DELTA_POS && dYaw < AMCL_MIN_DELTA_YAW) return raw;
     }
     this.mapPose = nextPose;
-    // const stamp = raw?.header?.stamp;
-    // this.mapPoseStampMs =
-    //   stamp && typeof stamp.sec === 'number' && typeof stamp.nanosec === 'number'
-    //     ? stamp.sec * 1000 + stamp.nanosec / 1e6
-    //     : Date.now();
     return raw;
   }
 

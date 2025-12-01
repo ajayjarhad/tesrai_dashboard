@@ -97,18 +97,7 @@ const securityPlugin = async (fastify: AppFastifyInstance) => {
     exposedHeaders: ['Set-Cookie'],
   });
 
-  // Rate limiting temporarily disabled for local development
-
   fastify.addHook('onSend', async (_requestt: AppFastifyRequest, reply: AppFastifyReply) => {
-    // const _originn = request.headers.origin;
-
-    // CORS headers are handled by @fastify/cors
-    // if (origin && isAllowedOrigin(origin)) {
-    //   reply.header('Access-Control-Allow-Origin', origin);
-    //   reply.header('Vary', 'Origin');
-    //   reply.header('Access-Control-Allow-Credentials', 'true');
-    // }
-
     reply.header('Server', 'TensraiDashboard');
 
     reply.header('X-Content-Type-Options', 'nosniff');

@@ -189,33 +189,6 @@ export interface PixelPoint {
 }
 
 /**
- * Legacy Map Layer Types (deprecated - use the ones above)
- */
-export interface RobotMapLayer {
-  id: string;
-  name: string;
-  visible: boolean;
-  opacity: number;
-  z_index: number;
-  type: 'robot';
-  robotId: string;
-  robotName: string;
-  pose: ROSPoseStamped;
-  color: string;
-}
-
-export interface AnnotationMapLayer {
-  id: string;
-  name: string;
-  visible: boolean;
-  opacity: number;
-  z_index: number;
-  type: 'annotation';
-  annotationType: 'waypoint' | 'zone' | 'path';
-  data: any[];
-}
-
-/**
  * Robot Registry and TF Tree Types
  */
 export interface RobotInfo {
