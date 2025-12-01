@@ -49,9 +49,7 @@ export const createRobotWsClient = (robotId: string) => {
 
     socket.onopen = () => {
       reconnectAttempts = 0;
-      statusHandlers.forEach(handler => {
-        handler('connected');
-      });
+      notifyStatus('connected');
     };
 
     const notifyEvent = (event: MessageEvent) => {
