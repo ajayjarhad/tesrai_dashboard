@@ -34,10 +34,6 @@ export const laserToPixelPoints = (
   // Prefer precomputed map-frame points; avoid rotating them with robot pose.
   if (Array.isArray(scan.points) && scan.points.length > 0) {
     if (scan.frame === 'map') {
-      // Debug: confirm we are using map-frame precomputed points
-      if (typeof console !== 'undefined') {
-        console.log('[laserToPixelPoints] using map-frame points:', scan.points.length);
-      }
       for (let i = 0; i < scan.points.length; i += step) {
         const p = scan.points[i];
         const pixel = worldToMapPixel({ x: p.x, y: p.y }, transforms);

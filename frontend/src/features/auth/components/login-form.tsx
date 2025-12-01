@@ -35,7 +35,6 @@ export function LoginForm() {
 
   const onSubmit = async (data: { username: string; password: string }) => {
     if (isLoading || isSubmitting || !canSubmit) return;
-    console.log('Form submitted with data:', data);
     await login(data);
   };
 

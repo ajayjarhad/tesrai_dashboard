@@ -2,6 +2,7 @@
 import { RosRobotManager } from './rosRobotManager.js';
 
 const DEFAULT_PORT = Number(process.env['ROS_BRIDGE_PORT'] ?? 9090);
+const DEFAULT_SECONDARY_PORT = Number(process.env['ROS_SECONDARY_BRIDGE_PORT'] ?? 8765);
 
 const normalizeMsgType = (msgType: string) => {
   const map: Record<string, string> = {
@@ -85,7 +86,20 @@ export class RosRegistry {
       if (!robot.ipAddress) {
         continue;
       }
-      const bridgeUrl = `ws://${robot.ipAddress}:${(robot as any).bridgePort ?? DEFAULT_PORT}`;
+      const bridgePort = (robot as any).bridgePort ?? DEFAULT_PORT;
+      const secondaryBridgePort = (robot as any).secondaryBridgePort;
+      const bridgeUrl = `ws://${robot.ipAddress}:${bridgePort}`;
+      const connections: Array<{ id: string; url: string }> = [
+        { id: 'default', url: bridgeUrl },
+      ];
+
+      // Only attach the secondary connection when explicitly configured
+      if (secondaryBridgePort) {
+        connections.push({
+          id: 'secondary',
+          url: `ws://${robot.ipAddress}:${secondaryBridgePort ?? DEFAULT_SECONDARY_PORT}`,
+        });
+      }
       const channels = normalizeChannels((robot as any).channels) ?? defaultChannels;
       const robotId = robot.id;
       desiredIds.add(robotId);
@@ -94,6 +108,7 @@ export class RosRegistry {
         const manager = new RosRobotManager({
           id: robotId,
           bridgeUrl,
+          connections,
           channels,
         });
         this.managers.set(robotId, manager);

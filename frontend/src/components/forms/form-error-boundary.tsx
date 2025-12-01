@@ -72,7 +72,6 @@ export function FormErrorBoundary({ children, fallback, onError }: FormErrorBoun
       onError={handleError}
       onReset={() => {
         // Optional: perform any cleanup before retry
-        console.log('Resetting form error boundary');
       }}
     >
       {children}

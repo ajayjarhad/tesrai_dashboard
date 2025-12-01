@@ -92,6 +92,7 @@ model Robot {
   status      RobotMode   @default(UNKNOWN)
   battery     Float?      // Battery percentage (0-100)
   bridgePort  Int?
+  secondaryBridgePort Int?
   channels    Json?
   
   // Location info

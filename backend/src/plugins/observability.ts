@@ -6,21 +6,11 @@ import type {
   AuditEvent,
 } from '../types/app.js';
 
-// Temporarily disabled OpenTelemetry due to dependency issues
-// import { initializeTelemetry, shutdownTelemetry } from '../lib/telemetry.js';
-
 /**
  * Observability plugin for Fastify
  * Enhanced logging with OpenTelemetry/SigNoz integration
  */
 const observabilityPlugin = async (fastify: AppFastifyInstance) => {
-  // Initialize OpenTelemetry (temporarily disabled)
-  try {
-    // await initializeTelemetry(fastify);
-    fastify.log.info('OpenTelemetry initialization temporarily disabled');
-  } catch (error) {
-    fastify.log.error(error, 'Failed to initialize OpenTelemetry');
-  }
   if ((process.env['NODE_ENV'] ?? 'development') === 'production') {
     fastify.log.level = 'warn';
   } else {

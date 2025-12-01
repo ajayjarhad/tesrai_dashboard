@@ -102,7 +102,6 @@ const rosGateway = async (fastify: FastifyInstance) => {
         return;
       }
 
-      // Asset handling intentionally disabled for now (serve assets later via WS/HTTP)
       if (parsed.type === 'request' && parsed.channel === 'asset') {
         const requestId = parsed.requestId;
         socket.send(
