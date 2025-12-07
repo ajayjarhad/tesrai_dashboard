@@ -42,6 +42,10 @@ const sanitizeChannelPayload = (channelName: string, data: unknown) => {
     const odom = data as any;
     return { pose: odom.pose ? { pose: pickPose(odom.pose.pose) } : undefined };
   }
+  if (channelName === 'amcl') {
+    const amcl = data as any;
+    return { pose: amcl.pose ? { pose: pickPose(amcl.pose.pose) } : undefined };
+  }
   if (channelName === 'laser') {
     const scan = data as any;
     return {

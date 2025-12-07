@@ -3,20 +3,6 @@ import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentation
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 
-type HeaderMap = Record<string, string>;
-
-const parseHeaders = (rawHeaders?: string): HeaderMap | undefined => {
-  if (!rawHeaders) return undefined;
-
-  return rawHeaders.split(',').reduce<HeaderMap>((headers, pair) => {
-    const [key, value] = pair.split('=').map(part => part?.trim());
-    if (key && value) {
-      headers[key] = value;
-    }
-    return headers;
-  }, {});
-};
-
 let sdk: NodeSDK | null = null;
 
 export const initializeOpenTelemetry = (): NodeSDK => {
@@ -67,7 +53,7 @@ export const initializeOpenTelemetry = (): NodeSDK => {
     sdk.start();
     console.log('🔍 OpenTelemetry initialized');
     console.log(`   Service: ${serviceName} v${serviceVersion}`);
-    console.log(`   Exporter: ${grpcEndpoint}`);
+    console.log(`   Exporter: ${httpEndpoint}`);
   } catch (error) {
     console.error('Failed to start OpenTelemetry SDK', error);
   }
