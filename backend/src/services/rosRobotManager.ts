@@ -22,6 +22,7 @@ const TF_STALE_MS = 1200;
 const TELEOP_MAX_LINEAR = 0.5; // m/s
 const TELEOP_MAX_ANGULAR = 0.8; // rad/s
 const TELEOP_WATCHDOG_MS = 750; // send zero if idle
+const POSE_EPS = 1e-3;
 
 const pickPose = (pose: any) => {
   if (!pose) return undefined;
@@ -121,6 +122,9 @@ export class RosRobotManager extends EventEmitter {
   private mapPose?: Pose2D;
   // private mapPoseStampMs?: number;
   private mapToOdom?: Pose2D & { stampMs?: number };
+  private mapToBase?: Pose2D & { stampMs?: number };
+  private odomToBase?: Pose2D & { stampMs?: number };
+  private lastPublishedPose?: Pose2D & { stampMs?: number; source?: string };
   private laserToBase?: Pose2D;
   private odomPose?: Pose2D & { stampMs?: number };
   private tfSubscribed = false;
@@ -331,6 +335,7 @@ export class RosRobotManager extends EventEmitter {
         ? stamp.sec * 1000 + stamp.nanosec / 1e6
         : undefined;
     this.odomPose = { x: pos.x ?? 0, y: pos.y ?? 0, yaw, stampMs };
+    this.maybeEmitBasePose();
     return raw;
   }
 
@@ -477,6 +482,7 @@ export class RosRobotManager extends EventEmitter {
     });
 
     this.updateTransformBasedOnFrame(parent, child, trans, yaw, stampMs);
+    this.maybeEmitBasePose();
   }
 
   private getStampMs(stamp: any): number | undefined {
@@ -498,11 +504,91 @@ export class RosRobotManager extends EventEmitter {
     if (parent === 'map' && child === 'odom') {
       this.mapToOdom = { x: trans.x ?? 0, y: trans.y ?? 0, yaw, stampMs };
     }
+    if (parent === 'map' && this.baseFrames.includes(child)) {
+      this.mapToBase = { x: trans.x ?? 0, y: trans.y ?? 0, yaw, stampMs };
+    }
+    if (parent === 'odom' && this.baseFrames.includes(child)) {
+      this.odomToBase = { x: trans.x ?? 0, y: trans.y ?? 0, yaw, stampMs };
+    }
     if (
       (child === 'laser' || child === 'base_scan') &&
       (parent === 'base_footprint' || parent === 'base_link' || this.baseFrames.includes(parent))
     ) {
       this.laserToBase = { x: trans.x ?? 0, y: trans.y ?? 0, yaw };
     }
+  }
+
+  private isTfStale(tf?: { stampMs?: number }, referenceMs?: number) {
+    if (!tf) return true;
+    if (tf.stampMs === undefined) return false; // static TF
+    if (referenceMs === undefined) return false; // no reference clock; trust TF
+    return Math.abs(referenceMs - tf.stampMs) > TF_STALE_MS;
+  }
+
+  private computeMapBasePose(): { pose: Pose2D; source: string; stampMs?: number } | undefined {
+    const refMs = this.odomPose?.stampMs;
+    // 1) direct map->base TF
+    if (this.mapToBase && !this.isTfStale(this.mapToBase, refMs)) {
+      return {
+        pose: { ...this.mapToBase },
+        source: 'tf:map->base',
+        stampMs: this.mapToBase.stampMs,
+      };
+    }
+    // 2) map->odom TF + odom->base TF
+    if (
+      this.mapToOdom &&
+      this.odomToBase &&
+      !this.isTfStale(this.mapToOdom, refMs) &&
+      !this.isTfStale(this.odomToBase, refMs)
+    ) {
+      const pose = combineTransforms(this.mapToOdom, this.odomToBase);
+      return { pose, source: 'tf:map->odom + odom->base', stampMs: this.mapToOdom.stampMs };
+    }
+    // 3) map->odom TF + odom pose topic (fallback)
+    if (this.mapToOdom && this.odomPose && !this.isTfStale(this.mapToOdom, this.odomPose.stampMs)) {
+      const pose = combineTransforms(this.mapToOdom, this.odomPose);
+      return { pose, source: 'tf:map->odom + odom topic', stampMs: this.mapToOdom.stampMs };
+    }
+    // 4) amcl pose as last resort
+    if (this.mapPose) {
+      return { pose: { ...this.mapPose }, source: 'amcl' };
+    }
+    return undefined;
+  }
+
+  private yawToQuaternion(yaw: number) {
+    const half = yaw / 2;
+    return { x: 0, y: 0, z: Math.sin(half), w: Math.cos(half) };
+  }
+
+  private maybeEmitBasePose() {
+    const resolved = this.computeMapBasePose();
+    if (!resolved) return;
+    const { pose, source, stampMs } = resolved;
+    const last = this.lastPublishedPose;
+    const yawDelta = Math.abs((pose.yaw ?? 0) - (last?.yaw ?? 0));
+    const posDelta = Math.hypot((pose.x ?? 0) - (last?.x ?? 0), (pose.y ?? 0) - (last?.y ?? 0));
+    if (last && posDelta < POSE_EPS && yawDelta < POSE_EPS) return;
+
+    const orientation = this.yawToQuaternion(pose.yaw ?? 0);
+    this.lastPublishedPose = { ...pose, stampMs, source };
+    this.emit('channel-data', {
+      channel: 'pose',
+      data: {
+        x: pose.x,
+        y: pose.y,
+        yaw: pose.yaw,
+        theta: pose.yaw,
+        stampMs,
+        source,
+        pose: {
+          pose: {
+            position: { x: pose.x, y: pose.y, z: 0 },
+            orientation,
+          },
+        },
+      },
+    });
   }
 }

@@ -11,11 +11,13 @@ import type {
 } from '../types/telemetry';
 
 const SMOOTH_ALPHA = 0.25;
+const TF_FRESH_MS = 4000;
 
 type RobotTelemetry = {
   pose?: Pose2D;
   odomPose?: Pose2D;
   amclPose?: Pose2D;
+  tfPose?: Pose2D;
   latchedPose?: Pose2D;
   latchedUntil?: number;
   laser?: LaserScan;
@@ -23,8 +25,9 @@ type RobotTelemetry = {
   lastMessageAt?: number;
   lastOdomAt?: number;
   lastAmclAt?: number;
+  lastTfAt?: number;
   status: ConnectionStatus;
-  poseSource?: 'odom' | 'amcl';
+  poseSource?: 'odom' | 'amcl' | 'tf';
 };
 
 type TelemetryState = {
@@ -102,6 +105,16 @@ export const useRobotTelemetryStore = create<TelemetryState>(set => ({
           } catch {
             // ignore bad odom
           }
+        } else if (event.channel === 'pose') {
+          const data = event.data as any;
+          if (typeof data?.x === 'number' && typeof data?.y === 'number') {
+            next.tfPose = {
+              x: data.x,
+              y: data.y,
+              theta: typeof data.theta === 'number' ? data.theta : (data.yaw ?? 0),
+            };
+            next.lastTfAt = now;
+          }
         } else if (event.channel === 'amcl') {
           try {
             const amcl = event.data as { pose?: { pose?: any } };
@@ -139,6 +152,7 @@ export const useRobotTelemetryStore = create<TelemetryState>(set => ({
         // Keep AMCL "fresh" longer so an initialpose reset doesn't immediately fall back to odom.
         const amclFresh = next.lastAmclAt ? now - next.lastAmclAt < 5000 : false;
         const odomFresh = next.lastOdomAt ? now - next.lastOdomAt < 1500 : false;
+        const tfFresh = next.lastTfAt ? now - next.lastTfAt < TF_FRESH_MS : false;
 
         // Latch logic: if we recently saw a big AMCL jump, hold it for the latch window.
         let latchActive = next.latchedPose && next.latchedUntil && now < next.latchedUntil;
@@ -157,6 +171,9 @@ export const useRobotTelemetryStore = create<TelemetryState>(set => ({
         if (latchActive && next.latchedPose) {
           next.pose = next.latchedPose;
           next.poseSource = 'amcl';
+        } else if (tfFresh && next.tfPose) {
+          next.pose = next.tfPose;
+          next.poseSource = 'tf';
         } else if (odomFresh && next.odomPose) {
           // Use odom for smoothness during motion; fall back to AMCL when odom is stale.
           next.pose = next.odomPose;
