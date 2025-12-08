@@ -90,8 +90,8 @@ const observabilityPlugin = async (fastify: AppFastifyInstance) => {
       tracing: 'enabled',
       openTelemetry: {
         service: process.env['OTEL_SERVICE_NAME'] ?? 'tensrai-dashboard',
-        endpoint: process.env['OTEL_EXPORTER_OTLP_ENDPOINT'] ?? 'http://localhost:4317/v1/traces',
-        exporter: 'otlp-proto',
+        endpoint: process.env['OTEL_EXPORTER_OTLP_ENDPOINT'] ?? 'http://localhost:4318',
+        exporter: 'otlp-http',
         instrumentation: 'auto',
       },
       sigNoz: {

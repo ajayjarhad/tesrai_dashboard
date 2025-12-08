@@ -28,14 +28,16 @@ export const initializeOpenTelemetry = (): NodeSDK => {
     ? `${existingAttributes},${resourceAttributes}`
     : resourceAttributes;
 
-  const otlpEndpoint = process.env['OTEL_EXPORTER_OTLP_ENDPOINT'] || 'http://localhost:4318';
-
-  // Ensure endpoint has the full URL for HTTP exporter
-  const httpEndpoint = otlpEndpoint.startsWith('http') ? otlpEndpoint : `http://${otlpEndpoint}`;
+  // OTLP/HTTP exporter expects /v1/traces; avoid double-appending the path
+  const rawEndpoint = process.env['OTEL_EXPORTER_OTLP_ENDPOINT'] || 'http://otel-collector:4318';
+  const normalizedEndpoint = rawEndpoint.startsWith('http') ? rawEndpoint : `http://${rawEndpoint}`;
+  const traceUrl = normalizedEndpoint.endsWith('/v1/traces')
+    ? normalizedEndpoint
+    : `${normalizedEndpoint.replace(/\/+$/, '')}/v1/traces`;
 
   const traceExporter = new OTLPTraceExporter({
-    url: `${httpEndpoint}/v1/traces`,
-  });
+    url: traceUrl,
+  }) as any;
 
   sdk = new NodeSDK({
     serviceName,
@@ -53,7 +55,7 @@ export const initializeOpenTelemetry = (): NodeSDK => {
     sdk.start();
     console.log('🔍 OpenTelemetry initialized');
     console.log(`   Service: ${serviceName} v${serviceVersion}`);
-    console.log(`   Exporter: ${httpEndpoint}`);
+    console.log(`   Exporter: ${traceUrl}`);
   } catch (error) {
     console.error('Failed to start OpenTelemetry SDK', error);
   }
