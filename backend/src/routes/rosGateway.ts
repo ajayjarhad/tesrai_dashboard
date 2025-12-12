@@ -3,6 +3,8 @@ import websocket from '@fastify/websocket';
 import type { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 import WebSocket from 'ws';
+import { trace } from '@opentelemetry/api';
+import { websocketMetrics, mapMetrics } from '../metrics/index.js';
 import { RosRegistry } from '../services/rosRegistry.js';
 import { upsertMapFromResponse } from '../services/saveMapFromMapping.js';
 
@@ -47,13 +49,43 @@ const rosGateway = async (fastify: FastifyInstance) => {
 
   await fastify.register(websocket);
 
+  // Track active WebSocket connections
+  let activeConnections = 0;
+
   fastify.get('/ws/robots/:robotId', { websocket: true }, (connection, request) => {
     const { robotId } = request.params as { robotId: string };
+    const tracer = trace.getTracer('ros-gateway');
+    const span = tracer.startSpan('websocket.robot.connection', {
+      attributes: {
+        'robot.id': robotId,
+        'websocket.type': 'ros-bridge',
+      },
+    });
+
+    // Increment active connections
+    activeConnections++;
+    // Note: activeConnections metric removed due to Bun runtime compatibility issues
+
     const manager = registry.getManager(robotId);
 
     if (!manager) {
+      websocketMetrics.connectionErrors.add(1, {
+        'robot.id': robotId,
+        'websocket.type': 'ros-bridge',
+        'error.reason': 'robot_not_found',
+      });
+
+      span.setAttributes({
+        'websocket.connection.success': false,
+        'websocket.error.reason': 'robot_not_found',
+      });
+      span.end();
+
       connection.socket?.send?.(makeError(undefined, undefined, `Unknown robot: ${robotId}`));
       connection.socket?.close?.();
+
+      activeConnections--;
+      // Note: activeConnections metric removed due to Bun runtime compatibility issues
       return;
     }
 
@@ -92,9 +124,22 @@ const rosGateway = async (fastify: FastifyInstance) => {
       try {
         parsed = JSON.parse(buffer.toString());
       } catch {
+        websocketMetrics.connectionErrors.add(1, {
+          'robot.id': robotId,
+          'websocket.type': 'ros-bridge',
+          'error.reason': 'invalid_json',
+        });
         socket.send(makeError(undefined, undefined, 'Invalid JSON message'));
         return;
       }
+
+      // Track incoming messages
+      websocketMetrics.messagesReceived.add(1, {
+        'robot.id': robotId,
+        'websocket.type': 'ros-bridge',
+        'message.type': parsed.type,
+        'message.channel': parsed.channel || 'unknown',
+      });
 
       if (parsed.type === 'command') {
         const result = manager.handleCommand(parsed.channel, parsed.data);
@@ -117,6 +162,32 @@ const rosGateway = async (fastify: FastifyInstance) => {
 
     socket.on('close', () => {
       manager.off('channel-data', forward);
+
+      // Decrement active connections
+      activeConnections--;
+      // Note: activeConnections metric removed due to Bun runtime compatibility issues
+
+      span.setAttributes({
+        'websocket.connection.established': true,
+        'websocket.connection.duration_ms': Date.now() - span.startTime.getTime(),
+      });
+      span.end();
+    });
+
+    socket.on('error', (error) => {
+      websocketMetrics.connectionErrors.add(1, {
+        'robot.id': robotId,
+        'websocket.type': 'ros-bridge',
+        'error.reason': 'socket_error',
+        'error.message': error.message,
+      });
+
+      span.setAttributes({
+        'websocket.connection.success': false,
+        'websocket.error.reason': 'socket_error',
+        'websocket.error.message': error.message,
+      });
+      span.recordException(error);
     });
   });
 
@@ -191,7 +262,35 @@ const rosGateway = async (fastify: FastifyInstance) => {
           const parsed = typeof payload === 'string' ? JSON.parse(payload) : null;
           if (parsed?.event === 'MAP_DATA_RESPONSE' && parsed?.payload?.files) {
             fastify.log.info({ robotId, targetUrl }, 'Received MAP_DATA_RESPONSE from mapping');
-            await upsertMapFromResponse(fastify, robotId, parsed.payload.files);
+
+            const tracer = trace.getTracer('ros-gateway');
+            const span = tracer.startSpan('map.upload', {
+              attributes: {
+                'robot.id': robotId,
+                'websocket.type': 'mapping-bridge',
+              },
+            });
+
+            try {
+              await upsertMapFromResponse(fastify, robotId, parsed.payload.files);
+
+              // Record successful map upload
+              mapMetrics.uploadCount.add(1, {
+                'robot.id': robotId,
+              });
+
+              span.setAttributes({
+                'map.upload.success': true,
+              });
+            } catch (error) {
+              span.setAttributes({
+                'map.upload.success': false,
+                'map.upload.error': (error as Error).message,
+              });
+              span.recordException(error as Error);
+            } finally {
+              span.end();
+            }
           }
         } catch (err) {
           fastify.log.debug({ robotId, err }, 'Mapping payload parse failed');

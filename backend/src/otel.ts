@@ -47,15 +47,19 @@ export const initializeOpenTelemetry = (): NodeSDK => {
         '@opentelemetry/instrumentation-fs': {
           enabled: false,
         },
+        '@opentelemetry/instrumentation-runtime-node': {
+          enabled: false,
+        },
       }),
     ],
   });
 
   try {
     sdk.start();
+
     console.log('🔍 OpenTelemetry initialized');
     console.log(`   Service: ${serviceName} v${serviceVersion}`);
-    console.log(`   Exporter: ${traceUrl}`);
+    console.log(`   Traces Exporter: ${traceUrl}`);
   } catch (error) {
     console.error('Failed to start OpenTelemetry SDK', error);
   }
